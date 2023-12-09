@@ -1,0 +1,11 @@
+/Users/jd/savingsgame/hydra/program/target/release/deps/unicode_segmentation-e808bc9ec200a9da.rmeta: /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/lib.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/grapheme.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/sentence.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/word.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/tables.rs
+
+/Users/jd/savingsgame/hydra/program/target/release/deps/libunicode_segmentation-e808bc9ec200a9da.rlib: /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/lib.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/grapheme.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/sentence.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/word.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/tables.rs
+
+/Users/jd/savingsgame/hydra/program/target/release/deps/unicode_segmentation-e808bc9ec200a9da.d: /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/lib.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/grapheme.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/sentence.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/word.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/tables.rs
+
+/Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/lib.rs:
+/Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/grapheme.rs:
+/Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/sentence.rs:
+/Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/word.rs:
+/Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/unicode-segmentation-1.10.1/src/tables.rs:

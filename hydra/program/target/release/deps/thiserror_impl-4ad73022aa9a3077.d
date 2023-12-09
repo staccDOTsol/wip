@@ -1,0 +1,13 @@
+/Users/jd/savingsgame/hydra/program/target/release/deps/libthiserror_impl-4ad73022aa9a3077.dylib: /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/lib.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/ast.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/attr.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/expand.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/fmt.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/generics.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/prop.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/span.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/valid.rs
+
+/Users/jd/savingsgame/hydra/program/target/release/deps/thiserror_impl-4ad73022aa9a3077.d: /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/lib.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/ast.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/attr.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/expand.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/fmt.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/generics.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/prop.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/span.rs /Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/valid.rs
+
+/Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/lib.rs:
+/Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/ast.rs:
+/Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/attr.rs:
+/Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/expand.rs:
+/Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/fmt.rs:
+/Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/generics.rs:
+/Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/prop.rs:
+/Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/span.rs:
+/Users/jd/.cargo/registry/src/github.com-1ecc6299db9ec823/thiserror-impl-1.0.50/src/valid.rs:

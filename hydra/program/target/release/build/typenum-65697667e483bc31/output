@@ -1,0 +1,2 @@
+cargo:rustc-env=TYPENUM_BUILD_CONSTS=/Users/jd/savingsgame/hydra/program/target/release/build/typenum-65697667e483bc31/out/consts.rs
+cargo:rustc-env=TYPENUM_BUILD_OP=/Users/jd/savingsgame/hydra/program/target/release/build/typenum-65697667e483bc31/out/op.rs

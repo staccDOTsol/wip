@@ -1,0 +1,1 @@
+Error: Function _ZN117_$LT$switchboard_solana..attestation_program..accounts..function..FunctionAccountData$u20$as$u20$core..fmt..Debug$GT$3fmt17hdbfba9b8ae54429bE Stack offset of 4345 exceeded max offset of 4096 by 249 bytes, please minimize large stack variables

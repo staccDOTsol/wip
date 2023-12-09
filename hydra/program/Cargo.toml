@@ -1,0 +1,29 @@
+[package]
+name = "mpl-hydra"
+version = "0.4.2"
+edition = "2021"
+description = "Collective account pooling, fan out wallet, dao treasury, all of the things you need to FAN OUT"
+authors = ["Metaplex Developers <dev@metaplex.com>"]
+repository = "https://github.com/metaplex-foundation/metaplex-program-library"
+license-file = "../../LICENSE"
+readme = "README.md"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[features]
+no-entrypoint = []
+test-bpf = []
+no-idl = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.29.0"
+anchor-spl = "0.29.0"
+spl-token = {version="*", features = [ "no-entrypoint" ]}
+basic-oracle = { path = "../../solana-oracle-function-example/programs/01_basic_oracle", features = ["cpi"] }
+draffle = { path = "../../draffle/programs/draffle", features = ["cpi"] }
+mpl-token-metadata = "*"
+[profile.release]
+overflow-checks = true     # Enable integer overflow checks.
