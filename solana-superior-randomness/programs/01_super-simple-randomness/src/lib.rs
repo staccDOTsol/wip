@@ -77,8 +77,8 @@ pub mod superior_randomness {
     ) -> anchor_lang::Result<()> {
         CreateSeededAccount::init_obligation_account(ctx, params)
     }
-    pub fn deposit(ctx: Context<Deposit>, amount: u64) -> anchor_lang::Result<()> {
-        Deposit::deposit(ctx, amount)
+    pub fn deposit(ctx: Context<Deposit>, amount: u64, bsol_price: u64, jitosol_price: u64) -> anchor_lang::Result<()> {
+        Deposit::deposit(ctx, amount, bsol_price, jitosol_price)
     }
     pub fn seed(ctx: Context<Seed>, seed: u32) -> anchor_lang::Result<()> {
         Seed::seed(ctx, seed)

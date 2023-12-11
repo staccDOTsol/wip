@@ -2,7 +2,6 @@ pub use crate::SbError;
 pub use crate::*;
 use anchor_lang::solana_program::system_instruction;
 use anchor_spl::token_interface::{MintTo, Token2022};
-use pyth_sdk_solana::state::PriceAccount;
 use solana_program::program_pack::Pack;
 use solend_sdk::state::*;
 use solend_sdk::math::Decimal;
@@ -546,17 +545,17 @@ pub struct Deposit<'info> {
     pub token_program: Program<'info, Token>,
     /// CHECK: no validation, for educational purpose only
     #[account(mut)]
-    pub marginfi_bank: Box<Account<'info, Reserve>>,
+    pub marginfi_bank: AccountInfo<'info>,
     /// CHECK: no validation, for educational purpose only
     #[account(mut)]
-    pub marginfi_bank_jito: Box<Account<'info, Reserve>>,
+    pub marginfi_bank_jito: AccountInfo<'info>,
     #[account(mut)]
     /// CHECK: no validation, for educational purpose only
     pub liquidity_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(mut)]
     /// CHECK:
-    pub marginfi_bank_wsol: Box<Account<'info, Reserve>>,
+    pub marginfi_bank_wsol: AccountInfo<'info>,
     #[account(mut,
         token::authority = marginfi_pda,
         token::mint = pool_mint_wsol,
@@ -630,11 +629,12 @@ pub struct Deposit<'info> {
     #[account(mut)]
     pub destination_deposit_collateral_pubkey: Box<Account<'info, TokenAccount>>,
     /// CHECK:
-    pub pyth_oracle: Box<Account<'info, PriceAccount>>,
+    pub pyth_oracle: AccountInfo<'info>,
+    /// CHECK:
     pub switchboard_oracle: AccountInfo<'info>,
 }
 impl Deposit<'_> {
-    pub fn deposit(ctx: Context<Deposit>, amount: u64) -> anchor_lang::Result<()> {
+    pub fn deposit(ctx: Context<Deposit>, amount: u64, bsol_price: u64, jitosol_price: u64) -> anchor_lang::Result<()> {
         
 
         let marginfi_pda = ctx.accounts.marginfi_pda.clone();
@@ -698,15 +698,11 @@ impl Deposit<'_> {
         // deposit bsol to solend
         let mut stake_pool_tokens = 0;
         {
-            let bsol_reserve: Reserve = Reserve::unpack(&ctx.accounts.marginfi_bank.to_account_info().data.borrow())?;
-            let wsol_reserve: Reserve =
-                Reserve::unpack(&ctx.accounts.marginfi_bank_wsol.to_account_info().data.borrow())?;
-            let price = bsol_reserve.liquidity.market_price;
-            let wsol_price = wsol_reserve.liquidity.market_price;
-            msg!("wsol_price {}", wsol_price);
-            msg!("price {}", price);
-            let price_div_wsol = price.0.as_u64().checked_div(wsol_price.0.as_u64()).unwrap();
-            stake_pool_tokens = amount.checked_div(price_div_wsol).unwrap();
+            msg!("bsol_price {}", bsol_price);
+            let mut amount = solend_sdk::math::Decimal(amount.into());
+            amount = solend_sdk::math::Decimal(amount.0.checked_div(bsol_price.into()).unwrap());
+            stake_pool_tokens = amount.0.as_u64();
+
             msg!("stake_pool_tokens {}", stake_pool_tokens);
             let ix =
                 solend_sdk::instruction::deposit_reserve_liquidity_and_obligation_collateral(
@@ -802,7 +798,7 @@ impl Deposit<'_> {
             )
             .unwrap();
         }
-        let mut amount : Decimal = Decimal::from( 0 as u64 );
+        let mut amount : Decimal = solend_sdk::math::Decimal::from(0 as u64);
         {
             let obligation: Obligation =
                 Obligation::unpack(&ctx.accounts.obligation_pubkey.to_account_info().data.borrow())?;
@@ -817,44 +813,31 @@ impl Deposit<'_> {
             msg!("amount {}", amount);
         }
         {
-            let marginfi_bank_wsol = ctx.accounts.marginfi_bank_wsol.clone();
-
-            // borrow wsol
-            let source_liquidity_pubkey = &ctx.accounts.liquidity_vault_wsol.clone();
-            let borrow_reserve_pubkey = marginfi_bank_wsol.clone();
-            let borrow_reserve_liquidity_fee_receiver_pubkey =
-                &ctx.accounts.stake_pool_withdraw_authority_wsol.clone();
-            let lending_market_pubkey = &ctx.accounts.lending_market_pubkey.clone();
-            let host_fee_receiver_pubkey = &ctx.accounts.pool_token_receiver_account_wsol.clone();
-
-            let pool_token_receiver_account_wsol =
-                ctx.accounts.pool_token_receiver_account_wsol.clone();
             let ix = solend_sdk::instruction::borrow_obligation_liquidity(
                 ctx.accounts.solend_sdk.key(),
                 amount.0.as_u64(),
-                source_liquidity_pubkey.key(),
-                pool_token_receiver_account_wsol.key(),
-                borrow_reserve_pubkey.key(),
-                borrow_reserve_liquidity_fee_receiver_pubkey.key(),
+                ctx.accounts.liquidity_vault_wsol.key(),
+                ctx.accounts.pool_token_receiver_account_wsol.key(),
+                ctx.accounts.marginfi_bank_wsol.key(),
+                ctx.accounts.stake_pool_withdraw_authority_wsol.key(),
                 ctx.accounts.obligation_pubkey.key(),
-                lending_market_pubkey.key(),
-                marginfi_pda.key(),
-                Some(host_fee_receiver_pubkey.key()),
+                ctx.accounts.lending_market_pubkey.key(),
+                ctx.accounts.marginfi_pda.key(),
+                Some(ctx.accounts.pool_token_receiver_account_wsol.key()),
             );
             invoke_signed(
                 &ix,
                 &[
                     ctx.accounts.lending_market_authority_pubkey.to_account_info().clone(),
-                    source_liquidity_pubkey.to_account_info().clone(),
-                    pool_token_receiver_account_wsol.to_account_info().clone(),
-                    borrow_reserve_pubkey.to_account_info().clone(),
-                    borrow_reserve_liquidity_fee_receiver_pubkey
+                    ctx.accounts.liquidity_vault_wsol.to_account_info().clone(),
+                    ctx.accounts.pool_token_receiver_account_wsol.to_account_info().clone(),
+                    ctx.accounts.marginfi_bank_wsol.to_account_info().clone(),
+                    ctx.accounts.stake_pool_withdraw_authority_wsol
                         .to_account_info()
                         .clone(),
                     ctx.accounts.obligation_pubkey.to_account_info().clone(),
-                    lending_market_pubkey.to_owned().to_account_info().clone(),
-                    marginfi_pda.to_account_info().clone(),
-                    host_fee_receiver_pubkey.to_account_info().clone(),
+                    ctx.accounts.lending_market_pubkey.to_owned().to_account_info().clone(),
+                    ctx.accounts.marginfi_pda.to_account_info().clone(),
                     ctx.accounts.system_program.to_account_info().clone(),
                     ctx.accounts.solend_sdk.to_account_info().clone(),
                     ctx.accounts.token_program.to_account_info().clone(),
@@ -929,14 +912,9 @@ impl Deposit<'_> {
             .unwrap();
         }
         {
-            let jito_reserve: Reserve =
-                Reserve::unpack(&ctx.accounts.marginfi_bank_jito.to_account_info().data.borrow())?;
-                let jito_price = jito_reserve.liquidity.market_price;
-            let stake_pool_tokens = amount
-                .0
-                .as_u64()
-                .checked_div(jito_price.0.as_u64())
-                .unwrap();
+            msg!("jitosol_price {}", jitosol_price);
+            amount = solend_sdk::math::Decimal(amount.0.checked_div(jitosol_price.into()).unwrap());
+            stake_pool_tokens = amount.0.as_u64();
             // mint_to
             let cpi_ctx = CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info().clone(),

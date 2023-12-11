@@ -581,8 +581,8 @@ if (!userCollateralAccount) {
     userCollateralPubkey: userCollateralAccountAddress,
     reserveCollateralMintPubkey:        new PublicKey(reservebsol.config.collateralMintAddress),
     destinationDepositCollateralPubkey: new PublicKey(reservebsol.config.collateralSupplyAddress),
-    pythOracle: new PublicKey(reservebsol.config.pythOracle)//,
-   // switchboardOracle: new PublicKey(reservebsol.config.switchboardOracle),
+    pythOracle: new PublicKey(reservebsol.config.pythOracle),
+    switchboardOracle: new PublicKey(reservebsol.config.switchboardOracle),
   })
   
   .instruction();
@@ -892,7 +892,11 @@ function SolanaComponent() {
       setProvider(provider);
       async function initIt(){
       const program = new Program(
-        theIdl,
+        await Program.fetchIdl(
+          new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL'),
+          provider
+        ),
+
         new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL'),
         provider
       )
