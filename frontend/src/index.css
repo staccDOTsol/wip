@@ -1,0 +1,124 @@
+.container {
+  background-color: #000;
+  border: 5px solid #ff00ff;
+  border-radius: 10px;
+  padding: 20px;
+  margin: 0 auto;
+  max-width: 800px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.disconnected-container {
+  background-color: #444;
+  border: 5px solid #4aff4a;
+  border-radius: 10px;
+  padding: 20px;
+  margin: 0 auto;
+  max-width: 800px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.container h2,
+.disconnected-container h2 {
+  font-family: "Press Start 2P", cursive;
+  color: #ff00ff;
+  font-size: 2em;
+  margin-top: 0;
+}
+
+.container ul,
+.disconnected-container ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+input[type="number"] {
+  background-color: #222;
+  border: 2px solid #ff00ff;
+  border-radius: 5px;
+  padding: 5px 10px;
+  color: #fff;
+  font-family: "Press Start 2P", cursive;
+  font-size: 1em;
+  width: 100%;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+input[type="number"]:focus {
+  outline: none;
+  border-color: #4aff4a;
+}
+
+label.App-header {
+  color: #fff;
+  font-family: "Press Start 2P", cursive;
+  font-size: 1em;
+  margin-bottom: 5px;
+}
+
+button.retro-button {
+  background-color: #ff00ff;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  margin: 5px 0;
+  color: #fff;
+  font-family: "Press Start 2P", cursive;
+  font-size: 1em;
+  cursor: pointer;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+button.retro-button:hover {
+  transform: scale(1.1);
+  background-color: #4aff4a;
+}
+
+button.retro-button:disabled {
+  background-color: #666;
+  cursor: not-allowed;
+}
+header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background-color: #0a0a0a;
+  color: white;
+  padding: 20px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+header h1 {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 2em;
+  margin: 0;
+}
+.container {
+  margin-top: 50px;
+}
+body {
+  padding-top: 50px;
+}
+header {
+  position: relative;
+  top: 50px;
+}
+
+.container li,
+.disconnected-container li {
+  color: #fff;
+  font-size: 1.2em;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.container p,
+.disconnected-container p {
+  color: #fff;
+  font-size: 1em;
+  margin-bottom: 10px;
+  text-align: left;
+}
