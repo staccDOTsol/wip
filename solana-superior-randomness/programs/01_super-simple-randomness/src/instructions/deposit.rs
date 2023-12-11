@@ -526,7 +526,7 @@ pub struct Deposit<'info> {
 
     #[account(mut)]
     /// CHECK: Checked by CPI to Spl Stake Program
-    pub stake_pool: Box<Account<'info, StakePool>>,
+    pub stake_pool: AccountInfo<'info>,
     #[account(mut)]
     /// CHECK: Checked by CPI to Spl Stake Program
     pub stake_pool_withdraw_authority: AccountInfo<'info>,
@@ -546,17 +546,17 @@ pub struct Deposit<'info> {
     pub token_program: Program<'info, Token>,
     /// CHECK: no validation, for educational purpose only
     #[account(mut)]
-    pub marginfi_bank: Box<Account<'info, Reserve>>,
+    pub marginfi_bank: AccountInfo<'info>,
     /// CHECK: no validation, for educational purpose only
     #[account(mut)]
-    pub marginfi_bank_jito: Box<Account<'info, Reserve>>,
+    pub marginfi_bank_jito: AccountInfo<'info>,
     #[account(mut)]
     /// CHECK: no validation, for educational purpose only
     pub liquidity_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(mut)]
     /// CHECK:
-    pub marginfi_bank_wsol: Box<Account<'info, Reserve>>,
+    pub marginfi_bank_wsol: AccountInfo<'info>,
     #[account(mut,
         token::authority = marginfi_pda,
         token::mint = pool_mint_wsol,
@@ -568,7 +568,7 @@ pub struct Deposit<'info> {
     pub pool_mint_wsol: Box<Account<'info, Mint>>,
     #[account(mut)]
     /// CHECK: no validation, for educational purpose only
-    pub stake_pool_jitosol: Box<Account<'info, StakePool>>,
+    pub stake_pool_jitosol: AccountInfo<'info>,
     #[account(mut)]
     /// CHECK: no validation, for educational purpose only
     pub stake_pool_withdraw_authority_jitosol: AccountInfo<'info>,
@@ -630,7 +630,7 @@ pub struct Deposit<'info> {
     #[account(mut)]
     pub destination_deposit_collateral_pubkey: Box<Account<'info, TokenAccount>>,
     /// CHECK:
-    pub pyth_oracle: Box<Account<'info, PriceAccount>>,
+    pub pyth_oracle: AccountInfo<'info>,
 }
 impl Deposit<'_> {
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> anchor_lang::Result<()> {
