@@ -1,4 +1,5 @@
 use crate::state::{pack_decimal, unpack_decimal};
+use borsh::BorshSerialize;
 use solana_program::msg;
 use solana_program::program_pack::IsInitialized;
 use solana_program::{program_error::ProgramError, slot_history::Slot};
@@ -10,6 +11,7 @@ use crate::{
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use solana_program::program_pack::{Pack, Sealed};
 
+// allow missing docs
 /// Sliding Window Rate limiter
 /// guarantee: at any point, the outflow between [cur_slot - slot.window_duration, cur_slot]
 /// is less than 2x max_outflow.
@@ -27,6 +29,43 @@ pub struct RateLimiter {
     /// cur qty is the sum of all outflows from [window_start, window_start + config.window_duration)
     cur_qty: Decimal,
 }
+#[allow(missing_docs)]
+
+
+impl RateLimiter {
+    pub fn serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<(), anchor_lang::error::Error> { 
+        self.config.serialize(writer)?;
+        writer.write_all(&self.prev_qty.serialize())?;
+        writer.write_all(&self.window_start.to_le_bytes())?;
+        writer.write_all(&self.cur_qty.serialize());
+        Ok(())
+    }
+}
+impl anchor_lang::AnchorSerialize for RateLimiter {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<(), std::io::Error> {
+        self.config.serialize(writer).unwrap();
+        writer.write_all(&self.prev_qty.serialize())?;
+        writer.write_all(&self.window_start.to_le_bytes())?;
+        writer.write_all(&self.cur_qty.serialize());
+
+        Ok(())
+    }
+}
+impl anchor_lang::AnchorDeserialize for RateLimiter {
+    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> Result<Self, std::io::Error> {
+        let config = RateLimiterConfig::deserialize_reader(reader)?;
+        let prev_qty = Decimal::deserialize_reader(reader)?;
+        let mut window_start = [0u8; 8];
+        reader.read_exact(&mut window_start)?;
+        let cur_qty = Decimal::deserialize_reader(reader)?;
+        Ok(Self {
+            config,
+            prev_qty,
+            window_start: u64::from_le_bytes(window_start),
+            cur_qty,
+        })
+    }
+}
 
 /// Lending market configuration parameters
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -36,8 +75,27 @@ pub struct RateLimiterConfig {
     /// Rate limiter param. Max outflow of tokens in a window
     pub max_outflow: u64,
 }
+#[allow(missing_docs)]
 
+impl RateLimiterConfig {
+    pub fn serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<(), anchor_lang::error::Error> { 
+        writer.write_all(&self.window_duration.to_le_bytes())?;
+        writer.write_all(&self.max_outflow.to_le_bytes())?;
+        Ok(())
+    }
+    pub fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> Result<Self, std::io::Error> {
+        let mut window_duration = [0u8; 8];
+        reader.read_exact(&mut window_duration)?;
+        let mut max_outflow = [0u8; 8];
+        reader.read_exact(&mut max_outflow)?;
+        Ok(Self {
+            window_duration: u64::from_le_bytes(window_duration),
+            max_outflow: u64::from_le_bytes(max_outflow),
+        })
+    }
+}
 impl RateLimiter {
+    
     /// initialize rate limiter
     pub fn new(config: RateLimiterConfig, cur_slot: u64) -> Self {
         let slot_start = if config.window_duration != 0 {

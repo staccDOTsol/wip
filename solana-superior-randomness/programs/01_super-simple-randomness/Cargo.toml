@@ -26,9 +26,11 @@ bytemuck = "*"
 arrayref = "*"
 spl-stake-pool = { version = "1.0.0", features = ["no-entrypoint"] }
 spl-token = "*"
-spl-token-2022 = "0.9.0"
-solend-program = { path = "../../../solend-program-library/token-lending/program", features = [
-    "no-entrypoint"
+spl-token-2022 = "*"
+solend-sdk = { path = "../../../solend-program-library/token-lending/sdk", features = [
 ] }
 pyth-sdk-solana = { path = "../../../pyth-sdk-rs/pyth-sdk-solana", version="0.8.0", features = [
 ] }
+num-derive = "0.4.1"
+num-traits = "0.2.17"
+spl-pod = "0.1.0"

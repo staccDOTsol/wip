@@ -18,7 +18,7 @@ use pyth_sdk::{
 };
 use solana_program::clock::Clock;
 use solana_program::pubkey::Pubkey;
-use std::mem::size_of;
+use std::{mem::size_of, str::FromStr};
 
 pub use pyth_sdk::{
     Price,
@@ -69,8 +69,6 @@ impl Default for AccountType {
     Debug,
     PartialEq,
     Eq,
-    BorshSerialize,
-    BorshDeserialize,
     serde::Serialize,
     serde::Deserialize,
 )]
@@ -84,6 +82,15 @@ impl Default for CorpAction {
         CorpAction::NoCorpAct
     }
 }
+impl CorpAction {
+    pub fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_all(&[0u8; 4])?;
+        Ok(())
+    }
+    pub fn deserialize(buf: &mut [u8; 4]) -> Result<Self, std::io::Error> {
+        Ok(CorpAction::NoCorpAct)
+    }
+}
 
 /// The type of prices associated with a product -- each product may have multiple price feeds of
 /// different types.
@@ -93,10 +100,8 @@ impl Default for CorpAction {
     Debug,
     PartialEq,
     Eq,
-    BorshSerialize,
-    BorshDeserialize,
     serde::Serialize,
-    serde::Deserialize,
+    serde::Deserialize
 )]
 #[repr(C)]
 pub enum PriceType {
@@ -109,6 +114,21 @@ impl Default for PriceType {
         PriceType::Unknown
     }
 }
+impl PriceType {
+    pub fn serialize(&self) -> u32 {
+        match self {
+            PriceType::Unknown => 0,
+            PriceType::Price => 1,
+        }
+    }
+    pub fn deserialize(buf: &[u8; 4]) -> Self {
+        match u32::from_le_bytes(*buf) {
+            0 => PriceType::Unknown,
+            1 => PriceType::Price,
+            _ => panic!("Invalid PriceType"),
+        }
+    }
+}
 
 
 /// Represents availability status of a price feed.
@@ -118,8 +138,6 @@ impl Default for PriceType {
     Debug,
     PartialEq,
     Eq,
-    BorshSerialize,
-    BorshDeserialize,
     serde::Serialize,
     serde::Deserialize,
 )]
@@ -142,6 +160,28 @@ impl Default for PriceStatus {
         PriceStatus::Unknown
     }
 }
+impl PriceStatus {
+    pub fn serialize(&self) -> u32 {
+        match self {
+            PriceStatus::Unknown => 0,
+            PriceStatus::Trading => 1,
+            PriceStatus::Halted => 2,
+            PriceStatus::Auction => 3,
+            PriceStatus::Ignored => 4,
+        }
+    }
+    pub fn deserialize(buf: &[u8; 4]) -> Self {
+        match u32::from_le_bytes(*buf) {
+            0 => PriceStatus::Unknown,
+            1 => PriceStatus::Trading,
+            2 => PriceStatus::Halted,
+            3 => PriceStatus::Auction,
+            4 => PriceStatus::Ignored,
+            _ => panic!("Invalid PriceStatus"),
+        }
+    }
+}
+
 
 /// Mapping accounts form a linked-list containing the listing of all products on Pyth.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -214,12 +254,10 @@ unsafe impl Pod for ProductAccount {
     Default,
     PartialEq,
     Eq,
-    BorshSerialize,
-    BorshDeserialize,
     serde::Serialize,
-    serde::Deserialize,
+    serde::Deserialize
 )]
-#[repr(C)]
+#[repr(C)] 
 pub struct PriceInfo {
     /// the current price.
     /// For the aggregate price use `get_price_no_older_than()` whenever possible. Accessing fields
@@ -244,10 +282,8 @@ pub struct PriceInfo {
     Default,
     PartialEq,
     Eq,
-    BorshSerialize,
-    BorshDeserialize,
     serde::Serialize,
-    serde::Deserialize,
+    serde::Deserialize
 )]
 #[repr(C)]
 pub struct PriceComp {
@@ -271,10 +307,8 @@ pub type Ema = Rational;
     Default,
     PartialEq,
     Eq,
-    BorshSerialize,
-    BorshDeserialize,
     serde::Serialize,
-    serde::Deserialize,
+    serde::Deserialize
 )]
 #[repr(C)]
 pub struct Rational {
@@ -338,7 +372,11 @@ pub struct PriceAccount {
     /// price components one per quoter
     pub comp:           [PriceComp; 32],
 }
-
+impl anchor_lang::Owner for PriceAccount {
+    fn owner() -> Pubkey {
+        Pubkey::from_str("FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH").unwrap()   
+    }
+}
 #[cfg(target_endian = "little")]
 unsafe impl Zeroable for PriceAccount {
 }
@@ -498,6 +536,275 @@ fn get_attr_str(buf: &[u8]) -> (&str, &[u8]) {
     let str = std::str::from_utf8(&buf[1..len + 1]).expect("attr should be ascii or utf-8");
     let remaining_buf = &buf[len + 1..];
     (str, remaining_buf)
+}
+
+impl anchor_lang::AnchorSerialize for PriceInfo {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_all(&self.price.to_le_bytes())?;
+        writer.write_all(&self.conf.to_le_bytes())?;
+        writer.write_all(&self.status.serialize().to_le_bytes())?;
+        &self.corp_act.serialize(writer)?;
+        writer.write_all(&self.pub_slot.to_le_bytes())?;
+        Ok(())
+    }
+}
+
+impl anchor_lang::AnchorDeserialize for PriceInfo {
+    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        let mut price_buf = [0u8; 8];
+        reader.read_exact(&mut price_buf)?;
+        let price = i64::from_le_bytes(price_buf);
+
+        let mut conf_buf = [0u8; 8];
+        reader.read_exact(&mut conf_buf)?;
+        let conf = u64::from_le_bytes(conf_buf);
+
+        let mut status_buf = [0u8; 4];
+        reader.read_exact(&mut status_buf)?;
+        let status = PriceStatus::deserialize(&status_buf);
+
+        let mut corp_act_buf = [0u8; 4];
+        reader.read_exact(&mut corp_act_buf)?;
+        let corp_act = CorpAction::deserialize(&mut corp_act_buf)?;
+
+        let mut pub_slot_buf = [0u8; 8];
+        reader.read_exact(&mut pub_slot_buf)?;
+        let pub_slot = u64::from_le_bytes(pub_slot_buf);
+
+        Ok(PriceInfo {
+            price,
+            conf,
+            status,
+            corp_act,
+            pub_slot,
+        })
+    }
+}
+
+impl anchor_lang::AnchorSerialize for PriceComp {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_all(self.publisher.as_ref())?;
+        self.agg.serialize(writer)?;
+        self.latest.serialize(writer)?;
+        Ok(())
+    }
+}
+
+impl anchor_lang::AnchorDeserialize for PriceComp {
+    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        let mut publisher_buf = [0u8; 32];
+        reader.read_exact(&mut publisher_buf)?;
+        let publisher = Pubkey::new_from_array(publisher_buf);
+        
+        let agg = PriceInfo::deserialize_reader(reader)?;
+        
+        let latest = PriceInfo::deserialize_reader(reader)?;
+        
+        Ok(PriceComp {
+            publisher,
+            agg,
+            latest,
+        })
+    }
+}
+
+impl anchor_lang::AnchorSerialize for Rational {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_all(&self.val.to_le_bytes())?;
+        writer.write_all(&self.numer.to_le_bytes())?;
+        writer.write_all(&self.denom.to_le_bytes())?;
+        Ok(())
+    }
+}
+
+impl anchor_lang::AnchorDeserialize for Rational {
+    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        let mut val_buf = [0u8; 8];
+        reader.read_exact(&mut val_buf)?;
+        let val = i64::from_le_bytes(val_buf);
+
+        let mut numer_buf = [0u8; 8];
+        reader.read_exact(&mut numer_buf)?;
+        let numer = i64::from_le_bytes(numer_buf);
+
+        let mut denom_buf = [0u8; 8];
+        reader.read_exact(&mut denom_buf)?;
+        let denom = i64::from_le_bytes(denom_buf);
+
+        Ok(Rational { val, numer, denom })
+    }
+}
+impl anchor_lang::AccountSerialize for PriceAccount {
+    fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<(), anchor_lang::error::Error> {
+        self.serialize(writer)?;
+        Ok(())
+    }
+}
+impl anchor_lang::AccountDeserialize for PriceAccount {
+    fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::prelude::Result<Self> {
+        let mut reader = std::io::Cursor::new(*buf);
+        let price_account = PriceAccount::deserialize_reader(&mut reader)?;
+        *buf = &reader.into_inner()[..];
+        Ok(price_account)
+    }
+}
+impl anchor_lang::AnchorSerialize for PriceAccount {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_all(&self.magic.to_le_bytes())?;
+        writer.write_all(&self.ver.to_le_bytes())?;
+        writer.write_all(&self.atype.to_le_bytes())?;
+        writer.write_all(&self.size.to_le_bytes())?;
+        writer.write_all(&self.ptype.serialize().to_le_bytes())?;
+        writer.write_all(&self.expo.to_le_bytes())?;
+        writer.write_all(&self.num.to_le_bytes())?;
+        writer.write_all(&self.num_qt.to_le_bytes())?;
+        writer.write_all(&self.last_slot.to_le_bytes())?;
+        writer.write_all(&self.valid_slot.to_le_bytes())?;
+        self.ema_price.serialize(writer)?;
+        self.ema_conf.serialize(writer)?;
+        writer.write_all(&self.timestamp.to_le_bytes())?;
+        writer.write_all(&self.min_pub.to_le_bytes())?;
+        writer.write_all(&self.drv2.to_le_bytes())?;
+        writer.write_all(&self.drv3.to_le_bytes())?;
+        writer.write_all(&self.drv4.to_le_bytes())?;
+        writer.write_all(self.prod.as_ref())?;
+        writer.write_all(self.next.as_ref())?;
+        writer.write_all(&self.prev_slot.to_le_bytes())?;
+        writer.write_all(&self.prev_price.to_le_bytes())?;
+        writer.write_all(&self.prev_conf.to_le_bytes())?;
+        writer.write_all(&self.prev_timestamp.to_le_bytes())?;
+        self.agg.serialize(writer)?;
+        for pc in self.comp.iter() {
+            pc.serialize(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl anchor_lang::AnchorDeserialize for PriceAccount {
+    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        let mut magic_buf = [0u8; 4];
+        reader.read_exact(&mut magic_buf)?;
+        let magic = u32::from_le_bytes(magic_buf);
+
+        let mut ver_buf = [0u8; 4];
+        reader.read_exact(&mut ver_buf)?;
+        let ver = u32::from_le_bytes(ver_buf);
+
+        let mut atype_buf = [0u8; 4];
+        reader.read_exact(&mut atype_buf)?;
+        let atype = u32::from_le_bytes(atype_buf);
+
+        let mut size_buf = [0u8; 4];
+        reader.read_exact(&mut size_buf)?;
+        let size = u32::from_le_bytes(size_buf);
+
+        let mut ptype_buf = [0u8; 4];
+        reader.read_exact(&mut ptype_buf)?;
+        let ptype = PriceType::deserialize(&ptype_buf);
+
+        let mut expo_buf = [0u8; 4];
+        reader.read_exact(&mut expo_buf)?;
+        let expo = i32::from_le_bytes(expo_buf);
+
+        let mut num_buf = [0u8; 4];
+        reader.read_exact(&mut num_buf)?;
+        let num = u32::from_le_bytes(num_buf);
+
+        let mut num_qt_buf = [0u8; 4];
+        reader.read_exact(&mut num_qt_buf)?;
+        let num_qt = u32::from_le_bytes(num_qt_buf);
+
+        let mut last_slot_buf = [0u8; 8];
+        reader.read_exact(&mut last_slot_buf)?;
+        let last_slot = u64::from_le_bytes(last_slot_buf);
+
+        let mut valid_slot_buf = [0u8; 8];
+        reader.read_exact(&mut valid_slot_buf)?;
+        let valid_slot = u64::from_le_bytes(valid_slot_buf);
+
+        let ema_price = Rational::deserialize_reader(reader)?;
+        let ema_conf = Rational::deserialize_reader(reader)?;
+
+        let mut timestamp_buf = [0u8; 8];
+        reader.read_exact(&mut timestamp_buf)?;
+        let timestamp = i64::from_le_bytes(timestamp_buf);
+
+        let mut min_pub_buf = [0u8; 1];
+        reader.read_exact(&mut min_pub_buf)?;
+        let min_pub = u8::from_le_bytes(min_pub_buf);
+
+        let mut drv2_buf = [0u8; 1];
+        reader.read_exact(&mut drv2_buf)?;
+        let drv2 = u8::from_le_bytes(drv2_buf);
+
+        let mut drv3_buf = [0u8; 2];
+        reader.read_exact(&mut drv3_buf)?;
+        let drv3 = u16::from_le_bytes(drv3_buf);
+
+        let mut drv4_buf = [0u8; 4];
+        reader.read_exact(&mut drv4_buf)?;
+        let drv4 = u32::from_le_bytes(drv4_buf);
+
+        let mut prod_buf = [0u8; 32];
+        reader.read_exact(&mut prod_buf)?;
+        let prod = Pubkey::new_from_array(prod_buf);
+
+        let mut next_buf = [0u8; 32];
+        reader.read_exact(&mut next_buf)?;
+        let next = Pubkey::new_from_array(next_buf);
+
+        let mut prev_slot_buf = [0u8; 8];
+        reader.read_exact(&mut prev_slot_buf)?;
+        let prev_slot = u64::from_le_bytes(prev_slot_buf);
+
+        let mut prev_price_buf = [0u8; 8];
+        reader.read_exact(&mut prev_price_buf)?;
+        let prev_price = i64::from_le_bytes(prev_price_buf);
+
+        let mut prev_conf_buf = [0u8; 8];
+        reader.read_exact(&mut prev_conf_buf)?;
+        let prev_conf = u64::from_le_bytes(prev_conf_buf);
+
+        let mut prev_timestamp_buf = [0u8; 8];
+        reader.read_exact(&mut prev_timestamp_buf)?;
+        let prev_timestamp = i64::from_le_bytes(prev_timestamp_buf);
+
+        let agg = PriceInfo::deserialize_reader(reader)?;
+
+        let mut comp = [PriceComp::default(); 32];
+        for pc in comp.iter_mut() {
+            *pc = PriceComp::deserialize_reader(reader)?;
+        }
+
+        Ok(PriceAccount {
+            magic,
+            ver,
+            atype,
+            size,
+            ptype,
+            expo,
+            num,
+            num_qt,
+            last_slot,
+            valid_slot,
+            ema_price,
+            ema_conf,
+            timestamp,
+            min_pub,
+            drv2,
+            drv3,
+            drv4,
+            prod,
+            next,
+            prev_slot,
+            prev_price,
+            prev_conf,
+            prev_timestamp,
+            agg,
+            comp,
+        })
+    }
 }
 
 #[cfg(test)]

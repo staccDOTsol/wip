@@ -3,6 +3,9 @@ use crate::{
     error::LendingError,
     math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub},
 };
+use borsh::{BorshSerialize, BorshDeserialize};
+use uint::byteorder::ReadBytesExt;
+
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -14,11 +17,13 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::{Pubkey, PUBKEY_BYTES},
 };
-use std::str::FromStr;
+use std::{str::FromStr, io::Read};
 use std::{
     cmp::{max, min, Ordering},
     convert::{TryFrom, TryInto},
 };
+// allow missing docs
+#[allow(missing_docs)]
 
 /// Percentage of an obligation that can be repaid during each liquidation call
 pub const LIQUIDATION_CLOSE_FACTOR: u8 = 20;
@@ -53,7 +58,12 @@ pub struct Reserve {
     /// Outflow Rate Limiter (denominated in tokens)
     pub rate_limiter: RateLimiter,
 }
-
+impl anchor_lang::Owner for Reserve {
+    fn owner() -> Pubkey {
+        Pubkey::from_str("So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo").unwrap()
+    }
+}
+#[allow(missing_docs)]
 impl Reserve {
     /// Create a new reserve
     pub fn new(params: InitReserveParams) -> Self {
@@ -1467,7 +1477,244 @@ impl Pack for Reserve {
         })
     }
 }
+// impl anchor_lang::AnchorSerialize, anchor_lang::AnchorDeserialize for LastUpdate, ReserveLiquidity, ReserveCollateral, ReserveConfig, RateLimiter
+impl anchor_lang::AnchorSerialize for LastUpdate {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_all(&self.slot.to_le_bytes())?;
+        writer.write_all(&[self.stale as u8])
+    }
+}
 
+impl anchor_lang::AnchorDeserialize for LastUpdate {
+    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        let mut slot = [0u8; 8];
+        reader.read_exact(&mut slot)?;
+        let mut stale = [0u8; 1];
+        reader.read_exact(&mut stale)?;
+        Ok(Self {
+            slot: u64::from_le_bytes(slot),
+            stale: stale[0] == 1,
+        })
+    }
+}
+
+impl anchor_lang::AnchorSerialize for ReserveLiquidity {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_all(self.mint_pubkey.as_ref())?;
+        writer.write_all(&self.mint_decimals.to_le_bytes())?;
+        writer.write_all(self.supply_pubkey.as_ref())?;
+        writer.write_all(self.pyth_oracle_pubkey.as_ref())?;
+        writer.write_all(self.switchboard_oracle_pubkey.as_ref())?;
+        writer.write_all(&self.available_amount.to_le_bytes())?;
+        self.borrowed_amount_wads.serialize_writer(writer)?;
+        self.cumulative_borrow_rate_wads.serialize_writer(writer)?;
+        self.accumulated_protocol_fees_wads.serialize_writer(writer)?;
+        self.market_price.serialize_writer(writer)?;
+        self.smoothed_market_price.serialize_writer(writer)
+    }
+}
+
+impl anchor_lang::AnchorDeserialize for ReserveLiquidity {
+    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        let mut mint_pubkey = [0u8; 32];
+        reader.read_exact(&mut mint_pubkey)?;
+        let mut mint_decimals = [0u8; 1];
+        reader.read_exact(&mut mint_decimals)?;
+        let mut supply_pubkey = [0u8; 32];
+        reader.read_exact(&mut supply_pubkey)?;
+        let mut pyth_oracle_pubkey = [0u8; 32];
+        reader.read_exact(&mut pyth_oracle_pubkey)?;
+        let mut switchboard_oracle_pubkey = [0u8; 32];
+        reader.read_exact(&mut switchboard_oracle_pubkey)?;
+        let mut available_amount = [0u8; 8];
+        reader.read_exact(&mut available_amount)?;
+        let borrowed_amount_wads = Decimal::deserialize_reader(reader)?;
+        let cumulative_borrow_rate_wads = Decimal::deserialize_reader(reader)?;
+        let accumulated_protocol_fees_wads = Decimal::deserialize_reader(reader)?;
+        let market_price = Decimal::deserialize_reader(reader)?;
+        let smoothed_market_price = Decimal::deserialize_reader(reader)?;
+        Ok(Self {
+            mint_pubkey: Pubkey::new_from_array(mint_pubkey),
+            mint_decimals: u8::from_le_bytes(mint_decimals),
+            supply_pubkey: Pubkey::new_from_array(supply_pubkey),
+            pyth_oracle_pubkey: Pubkey::new_from_array(pyth_oracle_pubkey),
+            switchboard_oracle_pubkey: Pubkey::new_from_array(switchboard_oracle_pubkey),
+            available_amount: u64::from_le_bytes(available_amount),
+            borrowed_amount_wads,
+            cumulative_borrow_rate_wads,
+            accumulated_protocol_fees_wads,
+            market_price,
+            smoothed_market_price,
+        })
+    }
+}
+#[allow(missing_docs)]
+
+impl ReserveCollateral {
+    pub fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_all(self.mint_pubkey.as_ref())?;
+        writer.write_all(&self.mint_total_supply.to_le_bytes())?;
+        writer.write_all(self.supply_pubkey.as_ref())
+    }
+}
+impl anchor_lang::AnchorSerialize for ReserveCollateral {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        self.serialize(writer)
+    }
+}
+impl anchor_lang::AnchorDeserialize for ReserveCollateral {
+    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        let mut mint_pubkey = [0u8; 32];
+        reader.read_exact(&mut mint_pubkey)?;
+        let mut mint_total_supply = [0u8; 8];
+        reader.read_exact(&mut mint_total_supply)?;
+        let mut supply_pubkey = [0u8; 32];
+        reader.read_exact(&mut supply_pubkey)?;
+        Ok(Self {
+            mint_pubkey: Pubkey::new_from_array(mint_pubkey),
+            mint_total_supply: u64::from_le_bytes(mint_total_supply),
+            supply_pubkey: Pubkey::new_from_array(supply_pubkey),
+        })
+    }
+}
+#[allow(missing_docs)]
+
+impl ReserveConfig {
+    pub fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_all(&[self.optimal_utilization_rate])?;
+        writer.write_all(&[self.max_utilization_rate])?;
+        writer.write_all(&[self.loan_to_value_ratio])?;
+        writer.write_all(&[self.liquidation_bonus])?;
+        writer.write_all(&[self.liquidation_threshold])?;
+        writer.write_all(&[self.min_borrow_rate])?;
+        writer.write_all(&[self.optimal_borrow_rate])?;
+        writer.write_all(&[self.max_borrow_rate])?;
+        writer.write_all(&self.super_max_borrow_rate.to_le_bytes())?;
+        writer.write_all(&self.fees.borrow_fee_wad.to_le_bytes())?;
+        writer.write_all(&self.fees.flash_loan_fee_wad.to_le_bytes())?;
+        writer.write_all(&[self.fees.host_fee_percentage])?;
+        writer.write_all(&self.deposit_limit.to_le_bytes())?;
+        writer.write_all(&self.borrow_limit.to_le_bytes())?;
+        writer.write_all(self.fee_receiver.as_ref())?;
+        writer.write_all(&[self.protocol_liquidation_fee])?;
+        writer.write_all(&[self.protocol_take_rate])?;
+        writer.write_all(&[self.reserve_type as u8])?;
+        writer.write_all(&self.added_borrow_weight_bps.to_le_bytes())?;
+        writer.write_all(&[self.max_liquidation_bonus])?;
+        writer.write_all(&[self.max_liquidation_threshold])?;
+        Ok(())
+    }
+}
+impl anchor_lang::AnchorSerialize for ReserveConfig {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        self.serialize(writer)
+    }
+}
+impl anchor_lang::AnchorDeserialize for ReserveConfig {
+    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        let mut optimal_utilization_rate = [0u8; 1];
+        reader.read_exact(&mut optimal_utilization_rate)?;
+        let mut max_utilization_rate = [0u8; 1];
+        reader.read_exact(&mut max_utilization_rate)?;
+        let mut loan_to_value_ratio = [0u8; 1];
+        reader.read_exact(&mut loan_to_value_ratio)?;
+        let mut liquidation_bonus = [0u8; 1];
+        reader.read_exact(&mut liquidation_bonus)?;
+        let mut liquidation_threshold = [0u8; 1];
+        reader.read_exact(&mut liquidation_threshold)?;
+        let mut min_borrow_rate = [0u8; 1];
+        reader.read_exact(&mut min_borrow_rate)?;
+        let mut optimal_borrow_rate = [0u8; 1];
+        reader.read_exact(&mut optimal_borrow_rate)?;
+        let mut max_borrow_rate = [0u8; 1];
+        reader.read_exact(&mut max_borrow_rate)?;
+        let mut super_max_borrow_rate = [0u8; 8];
+        reader.read_exact(&mut super_max_borrow_rate)?;
+        let mut fees_borrow_fee_wad = [0u8; 8];
+        reader.read_exact(&mut fees_borrow_fee_wad)?;
+        let mut fees_flash_loan_fee_wad = [0u8; 8];
+        reader.read_exact(&mut fees_flash_loan_fee_wad)?;
+        let mut fees_host_fee_percentage = [0u8; 1];
+        reader.read_exact(&mut fees_host_fee_percentage)?;
+        let mut deposit_limit = [0u8; 8];
+        reader.read_exact(&mut deposit_limit)?;
+        let mut borrow_limit = [0u8; 8];
+        reader.read_exact(&mut borrow_limit)?;
+        let mut fee_receiver = [0u8; 32];
+        reader.read_exact(&mut fee_receiver)?;
+        let mut protocol_liquidation_fee = [0u8; 1];
+        reader.read_exact(&mut protocol_liquidation_fee)?;
+        let mut protocol_take_rate = [0u8; 1];
+        reader.read_exact(&mut protocol_take_rate)?;
+        let mut asset_type = [0u8; 1];
+        reader.read_exact(&mut asset_type)?;
+        let mut added_borrow_weight_bps = [0u8; 8];
+        reader.read_exact(&mut added_borrow_weight_bps)?;
+        let mut max_liquidation_bonus = [0u8; 1];
+        reader.read_exact(&mut max_liquidation_bonus)?;
+        let mut max_liquidation_threshold = [0u8; 1];
+        reader.read_exact(&mut max_liquidation_threshold)?;
+        Ok(Self {
+            optimal_utilization_rate: optimal_utilization_rate[0],
+            max_utilization_rate: max_utilization_rate[0],
+            loan_to_value_ratio: loan_to_value_ratio[0],
+            liquidation_bonus: liquidation_bonus[0],
+            liquidation_threshold: liquidation_threshold[0],
+            min_borrow_rate: min_borrow_rate[0],
+            optimal_borrow_rate: optimal_borrow_rate[0],
+            max_borrow_rate: max_borrow_rate[0],
+            super_max_borrow_rate: u64::from_le_bytes(super_max_borrow_rate),
+            fees: ReserveFees {
+                borrow_fee_wad: u64::from_le_bytes(fees_borrow_fee_wad),
+                flash_loan_fee_wad: u64::from_le_bytes(fees_flash_loan_fee_wad),
+                host_fee_percentage: fees_host_fee_percentage[0],
+            },
+            deposit_limit: u64::from_le_bytes(deposit_limit),
+            borrow_limit: u64::from_le_bytes(borrow_limit),
+            fee_receiver: Pubkey::new_from_array(fee_receiver),
+            protocol_liquidation_fee: protocol_liquidation_fee[0],
+            protocol_take_rate: protocol_take_rate[0],
+            added_borrow_weight_bps: u64::from_le_bytes(added_borrow_weight_bps),
+            reserve_type: ReserveType::from_u8(asset_type[0]).unwrap(),
+            max_liquidation_bonus: max_liquidation_bonus[0],
+            max_liquidation_threshold: max_liquidation_threshold[0],
+        })
+    }
+}
+impl anchor_lang::AccountSerialize for Reserve {
+    fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<(), anchor_lang::error::Error> {
+        writer.write_all(&[self.version])?;
+        self.last_update.serialize(writer)?;
+        writer.write_all(self.lending_market.as_ref())?;
+        self.liquidity.serialize(writer)?;
+        self.collateral.serialize(writer)?;
+        self.config.serialize(writer)?;
+        self.rate_limiter.serialize(writer)
+    }
+}
+impl anchor_lang::AccountDeserialize for Reserve {
+    fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::prelude::Result<Self> {
+        let version = buf.read_u8()?;
+        let last_update = LastUpdate::deserialize(buf)?;
+        let mut to_pubkey: [u8; 32] = [0; 32];
+        buf.read_exact(&mut to_pubkey)?;
+        
+        let lending_market = Pubkey::new_from_array(to_pubkey);
+        let liquidity = ReserveLiquidity::deserialize(buf)?;
+        let collateral = ReserveCollateral::deserialize(buf)?;
+        let config = ReserveConfig::deserialize(buf)?;
+        let rate_limiter = RateLimiter::deserialize(buf)?;
+        Ok(Self {
+            version,
+            last_update,
+            lending_market,
+            liquidity,
+            collateral,
+            config,
+            rate_limiter,
+        })
+    }
+}
 #[cfg(test)]
 mod test {
     use super::*;

@@ -8,11 +8,13 @@ license = "Apache-2.0"
 edition = "2018"
 
 [dependencies]
+anchor-lang = "0.29.0"
 arrayref = "0.3.6"
+borsh = { version = "0.10.3" }
 bytemuck = "1.5.1"
 num-derive = "0.3"
 num-traits = "0.2"
-pyth-sdk-solana ="*"
+pyth-sdk-solana = { path = "../../../pyth-sdk-rs/pyth-sdk-solana"}
 solana-program = "*"
 spl-token = { version = "*", features=["no-entrypoint"] }
 static_assertions = "1.1.0"
@@ -24,8 +26,8 @@ assert_matches = "1.5.0"
 base64 = "0.13"
 log = "0.4.14"
 proptest = "1.0"
-solana-sdk = ">=1.9, < 1.15"
-serde = "=1.0.140"
+solana-sdk = "*"
+serde = "*"
 serde_yaml = "0.8"
 rand = "0.8.5"
 

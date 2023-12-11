@@ -30,7 +30,7 @@ pub fn get_pyth_price(
     let price_feed: PriceFeed = load_price_feed_from_account_info( &pyth_price_info ).unwrap();
 
     let pyth_price = price_feed
-        .get_current_price().unwrap();
+        .get_price_unchecked();
 
     let price: u64 = pyth_price.price.try_into().map_err(|_| {
         msg!("Oracle price cannot be negative");

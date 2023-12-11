@@ -20,6 +20,7 @@ num-traits = "0.2"
 thiserror = "1.0"
 serde = { version = "1.0.136", features = ["derive"] }
 pyth-sdk = { path = "../pyth-sdk", version = "0.8.0" }
+anchor-lang = "0.29.0"
 
 [dev-dependencies]
 solana-client = "*"

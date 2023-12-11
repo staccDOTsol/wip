@@ -21,7 +21,7 @@ use std::{
 pub const MAX_OBLIGATION_RESERVES: usize = 10;
 
 /// Lending market obligation state
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, anchor_lang::AnchorSerialize, anchor_lang::AnchorDeserialize)]
 pub struct Obligation {
     /// Version of the struct
     pub version: u8,
@@ -309,7 +309,7 @@ impl IsInitialized for Obligation {
 }
 
 /// Obligation collateral state
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, anchor_lang::AnchorSerialize, anchor_lang::AnchorDeserialize)]
 pub struct ObligationCollateral {
     /// Reserve collateral is deposited to
     pub deposit_reserve: Pubkey,
@@ -349,7 +349,7 @@ impl ObligationCollateral {
 }
 
 /// Obligation liquidity state
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, anchor_lang::AnchorSerialize, anchor_lang::AnchorDeserialize)]
 pub struct ObligationLiquidity {
     /// Reserve liquidity is borrowed from
     pub borrow_reserve: Pubkey,
