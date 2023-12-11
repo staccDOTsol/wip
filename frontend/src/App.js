@@ -17,10 +17,9 @@ function App() {
       <WalletModalProvider>
         
           <div className="container">
-            <header className="header">
-              <h1>one-click 'megayield' don't click this button button</h1> </header>
+            <header className="App-header">
+              <h1>one-click megayield don't click this button button</h1> </header>
               <SolanaComponent />
-              <WalletMultiButton /> 
           </div>
           
         </WalletModalProvider>

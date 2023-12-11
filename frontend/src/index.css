@@ -1,8 +1,77 @@
+/* Base Application Styles */
+.App {
+  text-align: center;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #0a0a0a; /* Dark background for that retro feel */
+  color: white;
+  font-family: 'Press Start 2P', cursive;
+}
+
+/* Retro Style Buttons */
+.retro-button {
+  background-color: #ff00ff; /* Bright neon-like color */
+  color: white;
+  border: 2px solid #fff; /* Retro-style border */
+  padding: 0.5rem 1rem;
+  margin: 10px;
+  border-radius: 5px;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(255, 0, 255, 0.7);
+  transition: transform 0.2s ease-in-out, background-color 0.2s;
+}
+
+.retro-button:hover {
+  transform: scale(1.1);
+  background-color: #e600e6; /* Slightly darker shade on hover */
+}
+
+.retro-button:disabled {
+  background-color: #666;
+  cursor: not-allowed;
+}
+
+/* Solana Wallet Adapter Button Customization */
+.wallet-adapter-button-trigger {
+  background-color: #4caf50; /* Subtle green for wallet button */
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.wallet-adapter-button-trigger:hover {
+  background-color: #45a049;
+}
+
+/* Responsive Design for Mobile Devices */
+@media screen and (max-width: 600px) {
+  .retro-button {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+
+  .wallet-adapter-button-trigger {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+
+  /* Adjust any other mobile-specific styles here */
+}
+
+/* Additional styles for other elements as needed */
+
+
 .container {
   background-color: #000;
   border: 5px solid #ff00ff;
   border-radius: 10px;
-  padding: 20px;
+  padding: 1em;
   margin: 0 auto;
   max-width: 800px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
@@ -13,7 +82,7 @@
   background-color: #444;
   border: 5px solid #4aff4a;
   border-radius: 10px;
-  padding: 20px;
+  padding: 1em;
   margin: 0 auto;
   max-width: 800px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
@@ -23,7 +92,7 @@
 .disconnected-container h2 {
   font-family: "Press Start 2P", cursive;
   color: #ff00ff;
-  font-size: 2em;
+  font-size: 1em;
   margin-top: 0;
 }
 
@@ -38,10 +107,12 @@ input[type="number"] {
   border: 2px solid #ff00ff;
   border-radius: 5px;
   padding: 5px 10px;
+  margin-bottom: 1em;
   color: #fff;
   font-family: "Press Start 2P", cursive;
   font-size: 1em;
-  width: 100%;
+  width: 10%;
+  text-align: center;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
 }
 
@@ -50,19 +121,19 @@ input[type="number"]:focus {
   border-color: #4aff4a;
 }
 
-label.App-header {
-  color: #fff;
+.App-header {
   font-family: "Press Start 2P", cursive;
-  font-size: 1em;
-  margin-bottom: 5px;
+  font-size: 0.4em;
+  margin-bottom: 1em;
 }
 
 button.retro-button {
   background-color: #ff00ff;
   border: none;
   border-radius: 5px;
-  padding: 10px 20px;
-  margin: 5px 0;
+  padding: 10px ;
+  margin: 5px ;
+  margin-bottom: 1em;
   color: #fff;
   font-family: "Press Start 2P", cursive;
   font-size: 1em;
@@ -87,7 +158,7 @@ header {
   z-index: 100;
   background-color: #0a0a0a;
   color: white;
-  padding: 20px;
+  padding: 1em;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
@@ -97,10 +168,10 @@ header h1 {
   margin: 0;
 }
 .container {
-  margin-top: 50px;
+  margin-top: 3em;
 }
 body {
-  padding-top: 50px;
+  padding-top: 1em;
 }
 header {
   position: relative;
@@ -110,15 +181,16 @@ header {
 .container li,
 .disconnected-container li {
   color: #fff;
-  font-size: 1.2em;
-  margin-bottom: 10px;
-  text-align: left;
+  text-align: center;
+  font-size: 1em;
+  margin-bottom: 1em;
 }
 
 .container p,
 .disconnected-container p {
   color: #fff;
   font-size: 1em;
-  margin-bottom: 10px;
+  margin-bottom: 1em;
   text-align: left;
 }
+

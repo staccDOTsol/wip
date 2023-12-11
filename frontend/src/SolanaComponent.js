@@ -7,7 +7,7 @@ import {  AddressLookupTableProgram, ComputeBudgetInstruction, ComputeBudgetProg
 import { AccountType, getConfig, MarginfiClient} from "@mrgnlabs/marginfi-client-v2";
 import { NATIVE_MINT, TOKEN_PROGRAM_ID, createAssociatedTokenAccountInstruction, createInitializeAccountInstruction, createSyncNativeInstruction, getMinimumBalanceForRentExemptAccount, shortenAddress, parseOracleSetup } from "@mrgnlabs/mrgn-common";
 import { ACCOUNT_SIZE, TOKEN_2022_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token'
-import { WalletConnectButton, WalletDisconnectButton, WalletModalButton } from '@solana/wallet-adapter-react-ui';
+import { WalletConnectButton, WalletDisconnectButton, WalletModalButton, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import * as solanaStakePool from '@solana/spl-stake-pool';
 import { Marinade, MarinadeConfig, Wallet } from '@marinade.finance/marinade-ts-sdk'
 
@@ -1277,12 +1277,7 @@ pub struct InitMrgnFiPda<'info> {
   {wallet.connected ? (
     <div className="container connected-container">
     <label className="App-header">Amount</label><br/>
-        <br />
-        <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
+        
       <div className="yield-section">
         <button
           className="retro-button"
@@ -1293,6 +1288,11 @@ pub struct InitMrgnFiPda<'info> {
         </button>
         <div className="output">{output}</div>
       </div>
+        <input
+          type="number"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
       <div className="unyield-section">
         <button
           className="retro-button"
@@ -1303,7 +1303,8 @@ pub struct InitMrgnFiPda<'info> {
         </button>
         <div>
         </div>
-      </div>
+      </div>      <WalletMultiButton /> 
+
     </div>
   ) : (
     <div className="container disconnected-container">
@@ -1314,7 +1315,9 @@ pub struct InitMrgnFiPda<'info> {
         <li>Take out the garbage</li>
         <li>Fly</li>
       </ul>
-      <h3 className="App-header">What it **does** do:</h3>
+      <h3 className="App-header">What it **does** do (connect && find out):</h3>
+      <WalletMultiButton /> 
+      <h3 className="App-header">How to use it:</h3>
       <ul>
         <li>Yield stakes bsol, deposits bsol to mrgnfi, borrows sol, stakes jitosol.</li>
         <li>Unyield unstakes jitosol, repays sol, unstakes jitosol.</li>
