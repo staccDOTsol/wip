@@ -1,11 +1,7 @@
 pub use crate::SbError;
 pub use crate::*;
 use anchor_lang::solana_program::system_instruction;
-use anchor_lang::system_program::create_account_with_seed;
-use anchor_spl::token::{initialize_account, InitializeAccount};
 use anchor_spl::token_interface::{MintTo, Token2022};
-use anchor_spl::token_interface::Burn;
-use solend_sdk::state::{Reserve, Obligation};
 use crate::StakePool;
 use std::str::FromStr;
 #[derive(Clone)]
@@ -36,7 +32,6 @@ impl anchor_lang::Id for SolendProgram {
 
 
 const SEED_PREFIX: &[u8] = b"marginfi";
-const SEEDED_SEED: &str = "robot001";
 
 use anchor_lang::AnchorSerialize;
 #[derive(Accounts)]
@@ -116,11 +111,10 @@ impl CreateSeededAccount<'_> {
     }
     pub fn init_obligation_account(
         ctx: Context<CreateSeededAccount>,
-        params: CreateSeededAccountParams,
+        _params: CreateSeededAccountParams,
     ) -> anchor_lang::Result<()> {
         let to_pubkey = ctx.accounts.to.key();
         let mrgnfi_pda = ctx.accounts.program.clone();
-        let seed = params.seed;
         let instruction: Instruction = solend_sdk::instruction::init_obligation(
             ctx.accounts.solend_sdk.key(),
             to_pubkey,
@@ -157,12 +151,6 @@ impl InitMrgnFiPda<'_> {
         let marginfi_pda = &mut ctx.accounts.marginfi_pda;
         marginfi_pda.authority = ctx.accounts.authority.key();
         marginfi_pda.bump = bump;
-        let marginfi_program = ctx.accounts.marginfi_program.clone();
-        let marginfi_group = ctx.accounts.marginfi_group.clone();
-        let marginfi_account = ctx.accounts.marginfi_account.clone();
-        let system_program = ctx.accounts.system_program.clone();
-
-        let signer: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], &[marginfi_pda.bump]]];
         /*
         let cpi_ctx = anchor_lang_26::context::CpiContext::new_with_signer(
             marginfi_program,
@@ -350,7 +338,6 @@ pub struct Deposit<'info> {
 impl Deposit<'_> {
     pub fn deposit(ctx: Context<Deposit>, amount: u64, bsol_price: u64, jitosol_price: u64) -> anchor_lang::Result<()> {
         
-        let og_amount = amount;
         let marginfi_pda = ctx.accounts.marginfi_pda.clone();
         let signer: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], &[marginfi_pda.bump]]];
         // stake bsol
@@ -388,7 +375,7 @@ impl Deposit<'_> {
         }
         {
     
-            let mut stake_pool_tokens: f64 = 0.0;
+            
             let rate: f64 = 1_000_000_000 as f64 / bsol_price as f64;
             let stake_pool_tokens = amount as f64 * rate * (1.0-0.008);
      
@@ -513,11 +500,10 @@ impl Deposit<'_> {
         
         {
 
-            let mut stake_pool_tokens: f64 = 0.0;
+            
             let rate: f64 = 1_000_000_000 as f64 / bsol_price as f64;
             let stake_pool_tokens = amount as f64 * rate * (1.0-0.008);
-            let mut amount : f64 = 0.0;
-            let mut ltv: f64 = 0.625;
+            let ltv: f64 = 0.625;
             let rate: f64 = 1_000_000_000 as f64 / jitosol_price as f64;
 
             let amount = stake_pool_tokens * ltv;
@@ -620,7 +606,7 @@ impl Deposit<'_> {
         }
         {
             
-            let mut stake_pool_tokens: f64 = 0.0;
+            
             let rate: f64 = 1_000_000_000 as f64 / bsol_price as f64;
             let stake_pool_tokens = amount as f64 * rate * (1.0-0.008);
             // mint_to
@@ -639,9 +625,8 @@ impl Deposit<'_> {
 
         Ok(())
     }
-    pub fn withdraw(ctx: Context<Deposit>, amount: u64, bsol_price: u64, jitosol_price: u64) -> anchor_lang::Result<()> {
+    pub fn withdraw(ctx: Context<Deposit>, amount: u64, _bsol_price: u64, jitosol_price: u64) -> anchor_lang::Result<()> {
         
-        let og_amount = amount;
         let marginfi_pda = ctx.accounts.marginfi_pda.clone();
         let signer: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], &[marginfi_pda.bump]]];
 
@@ -727,7 +712,6 @@ impl Deposit<'_> {
 }
      {
 
-        let minimum_rent = Rent::get()?.minimum_balance(165);
         let rate = 1_000_000_000 as f64 / jitosol_price as f64;
         let lamports = (amount as f64 * rate) as u64;
             // fee of 1/1000
