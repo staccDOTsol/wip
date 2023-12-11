@@ -1,0 +1,23 @@
+{
+  "name": "root",
+  "private": true,
+  "scripts": {
+    "bootstrap": "lerna bootstrap",
+    "buidl": "lerna run build",
+    "build": "lerna run build",
+    "watch": "lerna run watch",
+    "lint": "lerna run format:check",
+    "lint:fix": "lerna run format",
+    "changed": "lerna changed",
+    "docs": "lerna run generate-docs",
+    "bump": "yarn build && lerna version --conventional-commits --conventional-graduate --no-changelog",
+    "bump-manual": "yarn build && lerna version --conventional-graduate --no-changelog",
+    "release": "yarn build && lerna publish from-git"
+  },
+  "devDependencies": {
+    "lerna": "^5.0.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ]
+}
