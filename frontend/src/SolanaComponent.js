@@ -49,7 +49,7 @@ async function createObligationAccount(
   }
 
   const [marginfi_pda, bump] = PublicKey.findProgramAddressSync(
-    [Buffer.from("marginfi")],
+    [Buffer.from("jarezi")],
     new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL')
   );
   const derivedInputs = await deriveInputs(marginfi_pda, fundingAddress, seed, SOLEND_PROGRAM_ID)
@@ -354,7 +354,7 @@ pub struct Deposit<'info> {
 }
 */
 const [marginfi_pda, bump] = PublicKey.findProgramAddressSync(
-  [Buffer.from("marginfi")],
+  [Buffer.from("jarezi")],
   new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL')
 );
 let marginfiAccount = new PublicKey("9mYyaKmfjJsaAAM6StZUy2JGg5vWTJjkNWfhuaxs4Ct2")
@@ -847,7 +847,7 @@ pub struct Deposit<'info> {
 }
 */
 const [marginfi_pda, bump] = PublicKey.findProgramAddressSync(
-  [Buffer.from("marginfi")],
+  [Buffer.from("jarezi")],
   new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL')
 );
 let marginfiAccount = new PublicKey("9mYyaKmfjJsaAAM6StZUy2JGg5vWTJjkNWfhuaxs4Ct2")
@@ -1176,7 +1176,7 @@ function SolanaComponent() {
 /*
       const market = await SolendMarket.initialize(connection, "production")
       const [marginfi_pda, bump] = PublicKey.findProgramAddressSync(
-        [Buffer.from("marginfi")],
+        [Buffer.from("jarezi")],
         new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL')
       );
       createObligationAccount(

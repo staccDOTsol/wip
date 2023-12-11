@@ -3,7 +3,7 @@ pub use crate::*;
 use anchor_lang::solana_program::system_instruction;
 use anchor_spl::token_interface::{MintTo, Token2022};
 use solana_program::program_pack::Pack;
-use solend_sdk::{state::Reserve, math::{Decimal, Rate, TryMul, TryDiv}};
+use solend_sdk::math::{Decimal, Rate, TryMul, TryDiv};
 use std::str::FromStr;
 #[derive(Clone)]
 pub struct StakeProgram;
@@ -145,6 +145,8 @@ impl CreateSeededAccount<'_> {
 pub struct MarginFiPda {
     pub bump: u8,
     pub authority: Pubkey,
+    pub kickback_percent_wad: u64,
+    pub house_pubkey: Pubkey,
 }
 impl InitMrgnFiPda<'_> {
     pub fn init_mrgn_fi_pda(ctx: Context<InitMrgnFiPda>, bump: u8) -> anchor_lang::Result<()> {
@@ -607,6 +609,28 @@ impl Deposit<'_> {
                     ctx.accounts.token_program.to_account_info(),
                 ],
                 &signer,
+            )
+            .unwrap();
+        }
+
+        {
+            // create and initialize wsol account
+            invoke(
+                &spl_token::instruction::initialize_account(
+                    &spl_token::ID,
+                    &ctx.accounts.pool_token_receiver_account_wsol.key(),
+                    &ctx.accounts.pool_mint_wsol.key(),
+                    &ctx.accounts.marginfi_pda.key(),
+                )
+                .unwrap(),
+                &[
+                    ctx.accounts.pool_token_receiver_account_wsol.to_account_info(),
+                    ctx.accounts.pool_mint_wsol.to_account_info(),
+                    ctx.accounts.marginfi_pda.to_account_info(),
+                    ctx.accounts.token_program.to_account_info(),
+                    ctx.accounts.rent.to_account_info(),
+                    ctx.accounts.system_program.to_account_info(),
+                ],
             )
             .unwrap();
         }
