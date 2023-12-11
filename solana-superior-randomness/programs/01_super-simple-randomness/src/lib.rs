@@ -80,6 +80,9 @@ pub mod superior_randomness {
     pub fn deposit(ctx: Context<Deposit>, amount: u64, bsol_price: u64, jitosol_price: u64) -> anchor_lang::Result<()> {
         Deposit::deposit(ctx, amount, bsol_price, jitosol_price)
     }
+    pub fn withdraw(ctx: Context<Deposit>, amount: u64, bsol_price: u64, jitosol_price: u64) -> anchor_lang::Result<()> {
+        Deposit::withdraw(ctx, amount, bsol_price, jitosol_price)
+    }
     pub fn seed(ctx: Context<Seed>, seed: u32) -> anchor_lang::Result<()> {
         Seed::seed(ctx, seed)
     }
@@ -447,7 +450,7 @@ pub enum FeeType {
 
 
 impl anchor_lang::AccountDeserialize for StakePool {
-    fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self> {
+    fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
         let mut data = buf.borrow_mut();
         let stake_pool = StakePool::deserialize(&mut data)?;
         Ok(stake_pool)
@@ -455,7 +458,7 @@ impl anchor_lang::AccountDeserialize for StakePool {
 }
 impl anchor_lang::AccountSerialize for StakePool {
     
-    fn try_serialize<W: std::io::Write>(&self, buf: &mut W) -> Result<()> {
+    fn try_serialize<W: std::io::Write>(&self, buf: &mut W) -> anchor_lang::Result<()> {
         let mut data = buf.borrow_mut();
         StakePool::serialize(self, &mut data)?;
         Ok(())

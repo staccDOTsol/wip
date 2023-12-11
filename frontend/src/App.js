@@ -6,7 +6,7 @@ import SolanaComponent from './SolanaComponent';
 import '@solana/wallet-adapter-react-ui/styles.css';
 import { connected } from 'process';
 // You can also choose other network endpoints
-const network = 'https://shallow-sharai-fast-mainnet.helius-rpc.com/';
+const network = 'https://jarrett-solana-7ba9.mainnet.rpcpool.com/8d890735-edf2-4a75-af84-92f7c9e31718';
 
 
 function App() {

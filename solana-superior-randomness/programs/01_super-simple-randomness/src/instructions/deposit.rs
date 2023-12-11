@@ -1,301 +1,21 @@
 pub use crate::SbError;
 pub use crate::*;
 use anchor_lang::solana_program::system_instruction;
+use anchor_lang::system_program::create_account_with_seed;
+use anchor_spl::token::{initialize_account, InitializeAccount};
 use anchor_spl::token_interface::{MintTo, Token2022};
-use solana_program::program_pack::Pack;
-use solend_sdk::state::*;
-use solend_sdk::math::Decimal;
-use arrayref::array_ref;
-use solend_sdk::state::*;
+use anchor_spl::token_interface::Burn;
+use solend_sdk::state::{Reserve, Obligation};
 use crate::StakePool;
-use std::io::Read;
-/// Max number of collateral and liquidity reserve accounts combined for an obligation
-pub const MAX_OBLIGATION_RESERVES: usize = 10;
+use std::str::FromStr;
+#[derive(Clone)]
+pub struct StakeProgram;
 
-/// The unit of time given to a leader for encoding a block.
-///
-/// It is some some number of _ticks_ long.
-pub type Slot = u64;
-
-use std::cmp::Ordering;
-
-/// Number of slots to consider stale after
-pub const STALE_AFTER_SLOTS_ELAPSED: u64 = 1;
-
-/// Last update state
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct LastUpdate {
-    /// Last slot when updated
-    pub slot: Slot,
-    /// True when marked stale, false when slot updated
-    pub stale: bool,
-}
-impl AnchorSerialize for LastUpdate {
-    fn serialize<W: anchor_lang_26::prelude::borsh::maybestd::io::Write>(&self, writer: &mut W) -> anchor_lang_26::prelude::borsh::maybestd::io::Result<()> {
-        self.slot.serialize(writer)?;
-        writer.write(&[self.stale as u8])?;
-        Ok(())
+impl anchor_lang::Id for StakeProgram {
+    fn id() -> Pubkey {
+        Pubkey::from_str("Stake11111111111111111111111111111111111111").unwrap()
     }
 }
-impl AnchorDeserialize for LastUpdate {
-    fn deserialize_reader<R: Read>(reader: &mut R) -> anchor_lang_26::prelude::borsh::maybestd::io::Result<Self> {
-        let slot = Slot::deserialize_reader(reader)?;
-        let stale = u8::deserialize_reader(reader)? != 0;
-        Ok(Self {
-            slot,
-            stale,
-        })
-    }
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub struct RateLimiter {
-    /// configuration parameters
-    pub config: RateLimiterConfig,
-
-    // state
-    /// prev qty is the sum of all outflows from [window_start - config.window_duration, window_start)
-    prev_qty: Decimal,
-    /// window_start is the start of the current window
-    window_start: Slot,
-    /// cur qty is the sum of all outflows from [window_start, window_start + config.window_duration)
-    cur_qty: Decimal,
-}
-impl AnchorDeserialize for RateLimiter {
-    fn deserialize_reader<R: Read>(reader: &mut R) -> anchor_lang_26::prelude::borsh::maybestd::io::Result<Self> {
-        let config = RateLimiterConfig::deserialize_reader(reader)?;
-        let prev_qty = u64::deserialize_reader(reader)?.into();
-        let window_start = Slot::deserialize_reader(reader)?.into();
-        let cur_qty = u64::deserialize_reader(reader)?.into();
-        Ok(Self {
-            config,
-            prev_qty,
-            window_start,
-            cur_qty,
-        })
-    }
-}
-impl AnchorSerialize for RateLimiter {
-    fn serialize<W: anchor_lang_26::prelude::borsh::maybestd::io::Write>(&self, writer: &mut W) -> anchor_lang_26::prelude::borsh::maybestd::io::Result<()> {
-        self.config.serialize(writer)?;
-        self.prev_qty.0.0.serialize(writer)?;
-        self.window_start.serialize(writer)?;
-        self.cur_qty.0.0.serialize(writer)?;
-        Ok(())
-    }
-}
-
-/// Lending market configuration parameters
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct RateLimiterConfig {
-    /// Rate limiter window size in slots
-    pub window_duration: u64,
-    /// Rate limiter param. Max outflow of tokens in a window
-    pub max_outflow: u64,
-}
-impl AnchorDeserialize for RateLimiterConfig {
-    fn deserialize_reader<R: Read>(reader: &mut R) -> anchor_lang_26::prelude::borsh::maybestd::io::Result<Self> {
-        let window_duration = u64::deserialize_reader(reader)?.into();
-        let max_outflow = u64::deserialize_reader(reader)?.into();
-        Ok(Self {
-            window_duration,
-            max_outflow,
-        })
-    }
-}
-impl AnchorSerialize for RateLimiterConfig {
-    fn serialize<W: anchor_lang_26::prelude::borsh::maybestd::io::Write>(&self, writer: &mut W) -> anchor_lang_26::prelude::borsh::maybestd::io::Result<()> {
-        self.window_duration.serialize(writer)?;
-        self.max_outflow.serialize(writer)?;
-        Ok(())
-    }
-}
-
-/// Lending market state
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct LendingMarketZi {
-    /// Version of lending market
-    pub version: u8,
-    /// Bump seed for derived authority address
-    pub bump_seed: u8,
-    /// Owner authority which can add new reserves
-    pub owner: Pubkey,
-    /// Currency market prices are quoted in
-    /// e.g. "USD" null padded (`*b"USD\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"`) or a SPL token mint pubkey
-    pub quote_currency: [u8; 32],
-    /// Token program id
-    pub token_program_id: Pubkey,
-    /// Oracle (Pyth) program id
-    pub oracle_program_id: Pubkey,
-    /// Oracle (Switchboard) program id
-    pub switchboard_oracle_program_id: Pubkey,
-    /// Outflow rate limiter denominated in dollars
-    pub rate_limiter: RateLimiter,
-    /// whitelisted liquidator
-    pub whitelisted_liquidator: Option<Pubkey>,
-    /// risk authority (additional pubkey used for setting params)
-    pub risk_authority: Pubkey,
-}
-impl anchor_lang::AccountDeserialize for LendingMarketZi {
-    fn try_deserialize_unchecked(buf: &mut &[u8]) -> Result<Self> {
-        
-        let version = u8::deserialize_reader(buf)?;
-        let bump_seed = u8::deserialize_reader(buf)?;
-        let owner = Pubkey::deserialize_reader(buf)?;
-        let quote_currency = <[u8; 32]>::deserialize_reader(buf)?;
-        let token_program_id = Pubkey::deserialize_reader(buf)?;
-        let oracle_program_id = Pubkey::deserialize_reader(buf)?;
-        let switchboard_oracle_program_id = Pubkey::deserialize_reader(buf)?;
-        let rate_limiter = RateLimiter::deserialize_reader(buf)?;
-        let whitelisted_liquidator = Pubkey::deserialize_reader(buf)?;
-
-        let risk_authority = Pubkey::deserialize_reader(buf)?;
-        if whitelisted_liquidator == Pubkey::new_from_array([0u8; 32]) {
-            Ok(Self {
-                version,
-                bump_seed,
-                owner,
-                quote_currency,
-                token_program_id,
-                oracle_program_id,
-                switchboard_oracle_program_id,
-                rate_limiter,
-                whitelisted_liquidator: None,
-                risk_authority,
-            })
-        }
-        else {
-            Ok(Self {
-                version,
-                bump_seed,
-                owner,
-                quote_currency,
-                token_program_id,
-                oracle_program_id,
-                switchboard_oracle_program_id,
-                rate_limiter,
-                whitelisted_liquidator: Some(whitelisted_liquidator),
-                risk_authority,
-            })
-        }
-        
-    }
-}
-impl anchor_lang::AccountSerialize for LendingMarketZi {
-    fn try_serialize<T:  std::io::Write>(&self, buf: &mut T) -> Result<()> {
-        self.version.serialize(buf)?;
-        self.bump_seed.serialize(buf)?;
-        self.owner.serialize(buf)?;
-        self.quote_currency.serialize(buf)?;
-        self.token_program_id.serialize(buf)?;
-        self.oracle_program_id.serialize(buf)?;
-        self.switchboard_oracle_program_id.serialize(buf)?;
-        self.rate_limiter.serialize(buf)?;
-        (self.whitelisted_liquidator.is_some() as u8).serialize(buf)?;
-        if let Some(whitelisted_liquidator) = self.whitelisted_liquidator {
-            whitelisted_liquidator.serialize(buf)?;
-        }
-        self.risk_authority.serialize(buf)?;
-        Ok(())
-    }
-}
-// impl AnchorSerialize and Deserialize for LendingMarket
-impl AnchorSerialize for LendingMarketZi {
-    fn serialize<W: anchor_lang_26::prelude::borsh::maybestd::io::Write>(&self, writer: &mut W) -> anchor_lang_26::prelude::borsh::maybestd::io::Result<()> {
-        writer.write(&[self.version])?;
-        writer.write(&[self.bump_seed])?;
-        writer.write_all(self.owner.as_ref())?;
-        writer.write_all(self.quote_currency.as_ref())?;
-        writer.write_all(self.token_program_id.as_ref())?;
-        writer.write_all(self.oracle_program_id.as_ref())?;
-        writer.write_all(self.switchboard_oracle_program_id.as_ref())?;
-        self.rate_limiter.serialize(writer)?;
-        writer.write(&[self.whitelisted_liquidator.is_some() as u8])?;
-        if let Some(whitelisted_liquidator) = self.whitelisted_liquidator {
-            writer.write_all(whitelisted_liquidator.as_ref())?;
-        }
-        writer.write_all(self.risk_authority.as_ref())?;
-        Ok(())
-    }
-}
-
-#[derive(Clone, Debug)]
-struct LiteAggregatorAccountData {
-    /// Use sliding windoe or round based resolution
-    /// NOTE: This changes result propogation in latest_round_result
-    pub resolution_mode: AggregatorResolutionMode,
-    /// Latest confirmed update request result that has been accepted as valid.
-    pub latest_confirmed_round_result: SwitchboardDecimal,
-    pub latest_confirmed_round_num_success: u32,
-    pub latest_confirmed_round_std_deviation: SwitchboardDecimal,
-    /// Minimum number of oracle responses required before a round is validated.
-    pub min_oracle_results: u32,
-}
-
-impl From<&AggregatorAccountData> for LiteAggregatorAccountData {
-    fn from(agg: &AggregatorAccountData) -> Self {
-        Self {
-            resolution_mode: agg.resolution_mode,
-            latest_confirmed_round_result: agg.latest_confirmed_round.result,
-            latest_confirmed_round_num_success: agg.latest_confirmed_round.num_success,
-            latest_confirmed_round_std_deviation: agg.latest_confirmed_round.std_deviation,
-            min_oracle_results: agg.min_oracle_results,
-        }
-    }
-}
-
-impl LiteAggregatorAccountData {
-    /// If sufficient oracle responses, returns the latest on-chain result in SwitchboardDecimal format
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// use switchboard_v2::AggregatorAccountData;
-    /// use std::convert::TryInto;
-    ///
-    /// let feed_result = AggregatorAccountData::new(feed_account_info)?.get_result()?;
-    /// let decimal: f64 = feed_result.try_into()?;
-    /// ```
-    pub fn get_result(&self) -> anchor_lang::Result<SwitchboardDecimal> {
-        if self.resolution_mode == AggregatorResolutionMode::ModeSlidingResolution {
-            return Ok(self.latest_confirmed_round_result);
-        }
-        let min_oracle_results = self.min_oracle_results;
-        let latest_confirmed_round_num_success = self.latest_confirmed_round_num_success;
-        
-        Ok(self.latest_confirmed_round_result)
-    }
-}
-
-impl AnchorDeserialize for LiteAggregatorAccountData {
-    fn deserialize_reader<R: Read>(reader: &mut R) -> anchor_lang_26::prelude::borsh::maybestd::io::Result<Self> {
-        let resolution_mode = AggregatorResolutionMode::deserialize_reader(reader)?;
-        let latest_confirmed_round_result:  SwitchboardDecimal = SwitchboardDecimal::deserialize_reader(reader)?;
-        let latest_confirmed_round_num_success = u32::deserialize_reader(reader)?;
-        let latest_confirmed_round_std_deviation: SwitchboardDecimal = SwitchboardDecimal::deserialize_reader(reader)?;
-        let min_oracle_results = u32::deserialize_reader(reader)?;
-        Ok(Self {
-            resolution_mode,
-            latest_confirmed_round_result,
-            latest_confirmed_round_num_success,
-            latest_confirmed_round_std_deviation,
-            min_oracle_results,
-        })
-    }
-}
-impl AnchorSerialize for LiteAggregatorAccountData {
-    fn serialize<W: anchor_lang_26::prelude::borsh::maybestd::io::Write>(&self, writer: &mut W) -> anchor_lang_26::prelude::borsh::maybestd::io::Result<()> {
-        
-        self.resolution_mode.serialize(writer)?;
-//        self.latest_confirmed_round_result.0.serialize(writer)?;
-        self.latest_confirmed_round_num_success.serialize(writer)?;
-  //      self.latest_confirmed_round_std_deviation.0.serialize(writer)?;
-        self.min_oracle_results.serialize(writer)?;
-        
-        Ok(())
-    }
-}
-
 #[derive(Clone)]
 pub struct StakePoolProgram;
 
@@ -315,7 +35,6 @@ impl anchor_lang::Id for SolendProgram {
 }
 
 
-use std::str::FromStr;
 const SEED_PREFIX: &[u8] = b"marginfi";
 const SEEDED_SEED: &str = "robot001";
 
@@ -369,7 +88,6 @@ impl CreateSeededAccount<'_> {
         let lamports = params.lamports;
         let mrgnfi_pda = ctx.accounts.program.clone();
         let seed = params.seed;
-        msg!("seed: {}", seed);
         let space = params.space;
         let owner = ctx.accounts.owner.key();
         let instruction = system_instruction::create_account_with_seed(
@@ -385,11 +103,11 @@ impl CreateSeededAccount<'_> {
         invoke_signed(
             &instruction,
             &[
-                ctx.accounts.from.to_account_info().clone(),
-                ctx.accounts.to.to_account_info().clone(),
-                ctx.accounts.base.to_account_info().clone(),
-                ctx.accounts.owner.to_account_info().clone(),
-                ctx.accounts.system_program.to_account_info().clone(),
+                ctx.accounts.from.to_account_info(),
+                ctx.accounts.to.to_account_info(),
+                ctx.accounts.base.to_account_info(),
+                ctx.accounts.owner.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
             ],
             seeds,
         )?;
@@ -403,7 +121,6 @@ impl CreateSeededAccount<'_> {
         let to_pubkey = ctx.accounts.to.key();
         let mrgnfi_pda = ctx.accounts.program.clone();
         let seed = params.seed;
-        msg!("seed: {}", seed);
         let instruction: Instruction = solend_sdk::instruction::init_obligation(
             ctx.accounts.solend_sdk.key(),
             to_pubkey,
@@ -415,13 +132,13 @@ impl CreateSeededAccount<'_> {
         invoke_signed(
             &instruction,
             &[
-                ctx.accounts.to.to_account_info().clone(),
-                ctx.accounts.lending_market.to_account_info().clone(),
-                mrgnfi_pda.to_account_info().clone(),
-                ctx.accounts.solend_sdk.to_account_info().clone(),
-                ctx.accounts.system_program.to_account_info().clone(),
-                ctx.accounts.rent.to_account_info().clone(),
-                ctx.accounts.token_program.to_account_info().clone(),
+                ctx.accounts.to.to_account_info(),
+                ctx.accounts.lending_market.to_account_info(),
+                mrgnfi_pda.to_account_info(),
+                ctx.accounts.solend_sdk.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+                ctx.accounts.rent.to_account_info(),
+                ctx.accounts.token_program.to_account_info(),
             ],
             seeds,
         )?;
@@ -448,13 +165,13 @@ impl InitMrgnFiPda<'_> {
         let signer: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], &[marginfi_pda.bump]]];
         /*
         let cpi_ctx = anchor_lang_26::context::CpiContext::new_with_signer(
-            marginfi_program.clone(),
+            marginfi_program,
             marginfi::cpi::accounts::MarginfiAccountInitialize {
-                marginfi_group: marginfi_group.to_account_info().clone(),
-                marginfi_account: marginfi_account.to_account_info().clone(),
-                authority: marginfi_pda.to_account_info().clone(),
-                system_program: system_program.to_account_info().clone(),
-                fee_payer: ctx.accounts.authority.to_account_info().clone(),
+                marginfi_group: marginfi_group.to_account_info(),
+                marginfi_account: marginfi_account.to_account_info(),
+                authority: marginfi_pda.to_account_info(),
+                system_program: system_program.to_account_info(),
+                fee_payer: ctx.accounts.authority.to_account_info(),
             },
              &signer,
         );
@@ -518,10 +235,6 @@ pub struct Deposit<'info> {
         token::mint = pool_mint,
     )]
     pub pool_token_receiver_account: Box<Account<'info, TokenAccount>>,
-    #[account(mut, token::authority = Pubkey::from_str("Gf3sbc5Jb62jH7WcTr3WSNGDQLk1w6wcKMZXKK1SC1E6").unwrap(),
-        token::mint = pool_mint,
-    )]
-    pub referrer_token_account: Box<Account<'info, TokenAccount>>,
 
     #[account(mut)]
     /// CHECK: Checked by CPI to Spl Stake Program
@@ -584,12 +297,6 @@ pub struct Deposit<'info> {
         
     )]
     pub pool_token_receiver_account_jitosol: Box<Account<'info, TokenAccount>>,
-    #[account(mut, token::authority = Pubkey::from_str("Gf3sbc5Jb62jH7WcTr3WSNGDQLk1w6wcKMZXKK1SC1E6").unwrap(),
-        token::mint = pool_mint_jitosol,
-        
-        
-    )]
-    pub referrer_token_account_jitosol: Box<Account<'info, TokenAccount>>,
     /// CHECK: Checked by CPI to Spl Stake Program
     #[account(mut)]
     pub stake_pool_withdraw_authority_wsol: AccountInfo<'info>,
@@ -636,6 +343,9 @@ pub struct Deposit<'info> {
     pub pyth_oracle2: AccountInfo<'info>,
     /// CHECK:
     pub switchboard_oracle2: AccountInfo<'info>,
+    pub clock: Sysvar<'info, Clock>,
+    pub stake_history : Sysvar<'info, StakeHistory>,
+    pub stake_program: Program<'info, StakeProgram>,
 }
 impl Deposit<'_> {
     pub fn deposit(ctx: Context<Deposit>, amount: u64, bsol_price: u64, jitosol_price: u64) -> anchor_lang::Result<()> {
@@ -645,71 +355,45 @@ impl Deposit<'_> {
         let signer: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], &[marginfi_pda.bump]]];
         // stake bsol
         {
-            let stake_pool = ctx.accounts.stake_pool.clone();
-            let pool_withdraw_authority = ctx.accounts.stake_pool_withdraw_authority.clone();
-            let reserve_stake = ctx.accounts.reserve_stake_account.clone();
-            let signer = ctx.accounts.signer.clone();
-            let manager_fee_account = ctx.accounts.manager_fee_account.clone();
-            let referrer_token_account = ctx.accounts.referrer_token_account.clone();
-            let pool_mint = ctx.accounts.pool_mint.clone();
-            let ix = spl_stake_pool::instruction::deposit_sol(
-                &spl_stake_pool::id(),
-                &stake_pool.key(),
-                &pool_withdraw_authority.key(),
-                &reserve_stake.key(),
-                &signer.key(),
-                &ctx.accounts.pool_token_receiver_account.key(),
-                &manager_fee_account.key(),
-                &referrer_token_account.key(),
-                &pool_mint.key(),
-                &spl_token::id(),
-                amount,
-            );
             invoke(
-                &ix,
+                &spl_stake_pool::instruction::deposit_sol(
+                    &spl_stake_pool::id(),
+                    &ctx.accounts.stake_pool.key(),
+                    &ctx.accounts.stake_pool_withdraw_authority.key(),
+                    &ctx.accounts.reserve_stake_account.key(),
+                    &ctx.accounts.signer.key(),
+                    &ctx.accounts.pool_token_receiver_account.key(),
+                    &ctx.accounts.manager_fee_account.key(),
+                    &ctx.accounts.pool_token_receiver_account.key(),
+                    &ctx.accounts.pool_mint.key(),
+                    &spl_token::id(),
+                    amount,
+                ),
                 &[
-                    signer.to_account_info().clone(),
-                    reserve_stake.to_account_info().clone(),
+                    ctx.accounts.signer.to_account_info(),
+                    ctx.accounts.reserve_stake_account.to_account_info(),
                     ctx.accounts
                         .pool_token_receiver_account
                         .to_account_info()
-                        .clone(),
-                    pool_withdraw_authority.to_account_info().clone(),
-                    manager_fee_account.to_account_info().clone(),
-                    referrer_token_account.to_account_info().clone(),
-                    pool_mint.to_account_info().clone(),
-                    stake_pool.to_account_info().clone(),
-                    ctx.accounts.stake_pool_program.to_account_info().clone(),
-                    ctx.accounts.system_program.to_account_info().clone(),
-                    ctx.accounts.token_program.to_account_info().clone(),
+                        ,
+                        ctx.accounts.stake_pool_withdraw_authority.to_account_info(),
+                        ctx.accounts.manager_fee_account.to_account_info(),
+                        ctx.accounts.pool_mint.to_account_info(),
+                        ctx.accounts.stake_pool.to_account_info(),
+                    ctx.accounts.stake_pool_program.to_account_info(),
+                    ctx.accounts.system_program.to_account_info(),
+                    ctx.accounts.token_program.to_account_info(),
                 ],
             )?;
         }
-        // deposit bsol
-        /*
-        let cpi_ctx = anchor_lang_26::context::CpiContext::new_with_signer(marginfi_program.clone(), marginfi::cpi::accounts::LendingAccountDeposit {
-            marginfi_group: marginfi_group.to_account_info().clone(),
-            marginfi_account: marginfi_account.to_account_info().clone(),
-            signer: marginfi_pda.to_account_info().clone(),
-            bank: marginfi_bank.to_account_info().clone(),
-
-            signer_token_account: pool_token_receiver_account.to_account_info().clone(),
-            bank_liquidity_vault: liquidity_vault.to_account_info().clone(),
-            token_program: token_program.to_account_info().clone(),
-        },  &signer);
-        marginfi::cpi::lending_account_deposit(cpi_ctx, stake_pool_tokens as u64).unwrap();
-        */
-        // deposit bsol to solend
-            let mut stake_pool_tokens: f64 = 0.0;
-            msg!("bsol_price {}", bsol_price);
-            let rate: f64 = 1_000_000_000 as f64 / bsol_price as f64;
-            msg!("rate {}", rate);
-            let stake_pool_tokens = amount as f64 * rate * (1.0-0.008);
         {
     
-            msg!("stake_pool_tokens {}", stake_pool_tokens);
-            let ix =
-                solend_sdk::instruction::deposit_reserve_liquidity_and_obligation_collateral(
+            let mut stake_pool_tokens: f64 = 0.0;
+            let rate: f64 = 1_000_000_000 as f64 / bsol_price as f64;
+            let stake_pool_tokens = amount as f64 * rate * (1.0-0.008);
+     
+            invoke_signed(
+                &solend_sdk::instruction::deposit_reserve_liquidity_and_obligation_collateral(
                     ctx.accounts.solend_sdk.key(),
                     stake_pool_tokens as u64,
                     ctx.accounts.pool_token_receiver_account.key(),
@@ -724,102 +408,103 @@ impl Deposit<'_> {
                     ctx.accounts.pyth_oracle.key(),
                     ctx.accounts.switchboard_oracle.key(),
                     ctx.accounts.marginfi_pda.key(),
-                );
-            invoke_signed(
-                &ix,
+                ),
                 &[
                     ctx.accounts
                         .pool_token_receiver_account
                         .to_account_info()
-                        .clone(),
+                        ,
                     ctx.accounts
                         .user_collateral_pubkey
                         .to_account_info()
-                        .clone(),
-                    ctx.accounts.marginfi_bank.to_account_info().clone(),
-                    ctx.accounts.liquidity_vault.to_account_info().clone(),
+                        ,
+                    ctx.accounts.marginfi_bank.to_account_info(),
+                    ctx.accounts.liquidity_vault.to_account_info(),
                     ctx.accounts
                         .destination_deposit_collateral_pubkey
                         .to_account_info()
-                        .clone(),
-                    ctx.accounts.lending_market_pubkey.to_account_info().clone(),
+                        ,
+                    ctx.accounts.lending_market_pubkey.to_account_info(),
                     ctx.accounts
                         .reserve_collateral_mint_pubkey
                         .to_account_info()
-                        .clone(),
-                    ctx.accounts.obligation_pubkey.to_account_info().clone(),
-                    ctx.accounts.marginfi_pda.to_account_info().clone(),
-                    ctx.accounts.pyth_oracle.to_account_info().clone(),
-                    ctx.accounts.marginfi_pda.to_account_info().clone(),
-                    ctx.accounts.system_program.to_account_info().clone(),
-                    ctx.accounts.solend_sdk.to_account_info().clone(),
+                        ,
+                    ctx.accounts.obligation_pubkey.to_account_info(),
+                    ctx.accounts.marginfi_pda.to_account_info(),
+                    ctx.accounts.pyth_oracle.to_account_info(),
+                    ctx.accounts.marginfi_pda.to_account_info(),
+                    ctx.accounts.system_program.to_account_info(),
+                    ctx.accounts.solend_sdk.to_account_info(),
                     ctx.accounts
                         .lending_market_authority_pubkey
                         .to_account_info()
-                        .clone(),
-                    ctx.accounts.switchboard_oracle.to_account_info().clone(),
+                        ,
+                    ctx.accounts.switchboard_oracle.to_account_info(),
                 ],
                  &signer,
             )
             .unwrap();
+            
         }
         {
-            let refresh_reserve_ix = solend_sdk::instruction::refresh_reserve(
-                ctx.accounts.solend_sdk.key(),
-                ctx.accounts.marginfi_bank.key(),
-                ctx.accounts.pyth_oracle.key(),
-                
-                ctx.accounts.switchboard_oracle.key()
-            );
+            
+
             invoke_signed(
-                &refresh_reserve_ix,
+                &solend_sdk::instruction::refresh_reserve(
+                    ctx.accounts.solend_sdk.key(),
+                    ctx.accounts.marginfi_bank.key(),
+                    ctx.accounts.pyth_oracle.key(),
+                    
+                    ctx.accounts.switchboard_oracle.key()
+                ),
                 &[
-                    ctx.accounts.marginfi_bank.to_account_info().clone(),
-                    ctx.accounts.pyth_oracle.to_account_info().clone(),
-                    ctx.accounts.solend_sdk.to_account_info().clone(),
-                    ctx.accounts.lending_market_authority_pubkey.to_account_info().clone(),
-                    ctx.accounts.switchboard_oracle.to_account_info().clone(),
+                    ctx.accounts.marginfi_bank.to_account_info(),
+                    ctx.accounts.pyth_oracle.to_account_info(),
+                    ctx.accounts.solend_sdk.to_account_info(),
+                    ctx.accounts.lending_market_authority_pubkey.to_account_info(),
+                    ctx.accounts.switchboard_oracle.to_account_info(),
                 ],
                  &signer,
             )
             .unwrap();
         }
     {
-        let refresh_reserve_ix = solend_sdk::instruction::refresh_reserve(
-            ctx.accounts.solend_sdk.key(),
-            ctx.accounts.marginfi_bank_wsol.key(),
-            ctx.accounts.pyth_oracle2.key(),
-            
-            ctx.accounts.switchboard_oracle2.key()
-        );
         invoke_signed(
-            &refresh_reserve_ix,
+            &solend_sdk::instruction::refresh_reserve(
+                ctx.accounts.solend_sdk.key(),
+                ctx.accounts.marginfi_bank_wsol.key(),
+                ctx.accounts.pyth_oracle2.key(),
+                
+                ctx.accounts.switchboard_oracle2.key()
+            ),
             &[
-                ctx.accounts.marginfi_bank_wsol.to_account_info().clone(),
-                ctx.accounts.pyth_oracle2.to_account_info().clone(),
-                ctx.accounts.solend_sdk.to_account_info().clone(),
-                ctx.accounts.lending_market_authority_pubkey.to_account_info().clone(),
-                ctx.accounts.switchboard_oracle2.to_account_info().clone(),
+                ctx.accounts.marginfi_bank_wsol.to_account_info(),
+                ctx.accounts.pyth_oracle2.to_account_info(),
+                ctx.accounts.solend_sdk.to_account_info(),
+                ctx.accounts.lending_market_authority_pubkey.to_account_info(),
+                ctx.accounts.switchboard_oracle2.to_account_info(),
             ],
              &signer,
         )
         .unwrap();
+            
     }
-        {
-            let refresh_obligation_ix = solend_sdk::instruction::refresh_obligation(
-                ctx.accounts.solend_sdk.key(),
-                ctx.accounts.obligation_pubkey.key(),
-                vec![ctx.accounts.marginfi_bank.key(),
-                ctx.accounts.marginfi_bank_wsol.key()],
-            );
+    {
+        
+
             invoke_signed(
-                &refresh_obligation_ix,
+                &solend_sdk::instruction::refresh_obligation(
+                    ctx.accounts.solend_sdk.key(),
+                    ctx.accounts.obligation_pubkey.key(),
+                    vec![ctx.accounts.marginfi_bank.key(),
+                    ctx.accounts.marginfi_bank_wsol.key()],
+                ),
                 &[
-                    ctx.accounts.obligation_pubkey.to_account_info().clone(),
-                    ctx.accounts.solend_sdk.to_account_info().clone(),
-                    ctx.accounts.lending_market_authority_pubkey.to_account_info().clone(),
-                    ctx.accounts.marginfi_bank.to_account_info().clone(),
-                    ctx.accounts.marginfi_bank_wsol.to_account_info().clone()
+                    ctx.accounts.obligation_pubkey.to_account_info(),
+                    ctx.accounts.solend_sdk.to_account_info(),
+                    ctx.accounts.lending_market_authority_pubkey.to_account_info(),
+                    ctx.accounts.marginfi_bank.to_account_info(),
+                    ctx.accounts.marginfi_bank_wsol.to_account_info()
                 ],
                  &signer,
             )
@@ -827,115 +512,124 @@ impl Deposit<'_> {
         }
         
         {
+
+            let mut stake_pool_tokens: f64 = 0.0;
+            let rate: f64 = 1_000_000_000 as f64 / bsol_price as f64;
+            let stake_pool_tokens = amount as f64 * rate * (1.0-0.008);
             let mut amount : f64 = 0.0;
             let mut ltv: f64 = 0.625;
             let rate: f64 = 1_000_000_000 as f64 / jitosol_price as f64;
 
             let amount = stake_pool_tokens * ltv;
             let amount = amount * rate as f64;
-            
-    msg!("amount {}", amount);
 
-            let ix = solend_sdk::instruction::borrow_obligation_liquidity(
-                ctx.accounts.solend_sdk.key(),
-                amount as u64,
-                ctx.accounts.liquidity_vault_wsol.key(),
-                ctx.accounts.pool_token_receiver_account_wsol.key(),
-                ctx.accounts.marginfi_bank_wsol.key(),
-                ctx.accounts.stake_pool_withdraw_authority_wsol.key(),
-                ctx.accounts.obligation_pubkey.key(),
-                ctx.accounts.lending_market_pubkey.key(),
-                ctx.accounts.marginfi_pda.key(),
-                Some(ctx.accounts.pool_token_receiver_account_wsol.key()),
-            );
             invoke_signed(
-                &ix,
+                &solend_sdk::instruction::borrow_obligation_liquidity(
+                    ctx.accounts.solend_sdk.key(),
+                    amount as u64,
+                    ctx.accounts.liquidity_vault_wsol.key(),
+                    ctx.accounts.pool_token_receiver_account_wsol.key(),
+                    ctx.accounts.marginfi_bank_wsol.key(),
+                    ctx.accounts.stake_pool_withdraw_authority_wsol.key(),
+                    ctx.accounts.obligation_pubkey.key(),
+                    ctx.accounts.lending_market_pubkey.key(),
+                    ctx.accounts.marginfi_pda.key(),
+                    Some(ctx.accounts.pool_token_receiver_account_wsol.key()),
+                ),
                 &[
-                    ctx.accounts.lending_market_authority_pubkey.to_account_info().clone(),
-                    ctx.accounts.liquidity_vault_wsol.to_account_info().clone(),
-                    ctx.accounts.pool_token_receiver_account_wsol.to_account_info().clone(),
-                    ctx.accounts.marginfi_bank_wsol.to_account_info().clone(),
+                    ctx.accounts.lending_market_authority_pubkey.to_account_info(),
+                    ctx.accounts.liquidity_vault_wsol.to_account_info(),
+                    ctx.accounts.pool_token_receiver_account_wsol.to_account_info(),
+                    ctx.accounts.marginfi_bank_wsol.to_account_info(),
                     ctx.accounts.stake_pool_withdraw_authority_wsol
                         .to_account_info()
-                        .clone(),
-                    ctx.accounts.obligation_pubkey.to_account_info().clone(),
-                    ctx.accounts.lending_market_pubkey.to_owned().to_account_info().clone(),
-                    ctx.accounts.marginfi_pda.to_account_info().clone(),
-                    ctx.accounts.system_program.to_account_info().clone(),
-                    ctx.accounts.solend_sdk.to_account_info().clone(),
-                    ctx.accounts.token_program.to_account_info().clone(),
+                        ,
+                    ctx.accounts.obligation_pubkey.to_account_info(),
+                    ctx.accounts.lending_market_pubkey.to_owned().to_account_info(),
+                    ctx.accounts.marginfi_pda.to_account_info(),
+                    ctx.accounts.system_program.to_account_info(),
+                    ctx.accounts.solend_sdk.to_account_info(),
+                    ctx.accounts.token_program.to_account_info(),
                 ],
                  &signer,
             )
             .unwrap();
-            let ix = spl_token::instruction::close_account(
-                &spl_token::ID,
-                &ctx.accounts.pool_token_receiver_account_wsol.key(),
-                &ctx.accounts.signer.key(),
-                &ctx.accounts.marginfi_pda.key(),
-                &[], // TODO: support multisig
-            )?;
+            
+        }
+        {
+            
+
             solana_program::program::invoke_signed(
-                &ix,
+                &spl_token::instruction::close_account(
+                    &spl_token::ID,
+                    &ctx.accounts.pool_token_receiver_account_wsol.key(),
+                    &ctx.accounts.signer.key(),
+                    &ctx.accounts.marginfi_pda.key(),
+                    &[], // TODO: support multisig
+                )?,
                 &[
                     ctx.accounts
                         .pool_token_receiver_account_wsol
                         .to_account_info()
-                        .clone(),
-                    ctx.accounts.signer.to_account_info().clone(),
-                    ctx.accounts.marginfi_pda.to_account_info().clone(),
-                    ctx.accounts.token_program.to_account_info().clone(),
+                        ,
+                    ctx.accounts.signer.to_account_info(),
+                    ctx.accounts.marginfi_pda.to_account_info(),
+                    ctx.accounts.token_program.to_account_info(),
                 ],
                  &signer,
             )
             .unwrap();
             
-            
-            
-            let ix = spl_stake_pool::instruction::deposit_sol(
-                &spl_stake_pool::id(),
-            &ctx.accounts.stake_pool_jitosol.key(),
-            &ctx.accounts.stake_pool_withdraw_authority_jitosol.key(),
-            &ctx.accounts.reserve_stake_account_jitosol.key(),
-            &ctx.accounts.signer.key(),
-            &ctx.accounts.pool_token_receiver_account_jitosol.key(),
-            &ctx.accounts.manager_fee_account_jitosol.key(),
-            &ctx.accounts.referrer_token_account_jitosol.key(),
-            &ctx.accounts.pool_mint_jitosol.key(),
-            &spl_token::id(),
-            amount as u64
-            );
+        }
+        {
             
 
             invoke(
-                &ix,
+                &spl_stake_pool::instruction::deposit_sol(
+                    &spl_stake_pool::id(),
+                &ctx.accounts.stake_pool_jitosol.key(),
+                &ctx.accounts.stake_pool_withdraw_authority_jitosol.key(),
+                &ctx.accounts.reserve_stake_account_jitosol.key(),
+                &ctx.accounts.signer.key(),
+                &ctx.accounts.pool_token_receiver_account_jitosol.key(),
+                &ctx.accounts.manager_fee_account_jitosol.key(),
+                &ctx.accounts.pool_token_receiver_account_jitosol.key(),
+                &ctx.accounts.pool_mint_jitosol.key(),
+                &spl_token::id(),
+                amount as u64
+                ),
                 &[
-                    ctx.accounts.marginfi_pda.to_account_info().clone(),
-                    ctx.accounts.signer.to_account_info().clone(),
-                    ctx.accounts.stake_pool_jitosol.to_account_info().clone(),
-                    ctx.accounts.stake_pool_withdraw_authority_jitosol.to_account_info().clone(),
-                    ctx.accounts.reserve_stake_account_jitosol.to_account_info().clone(),
+                    ctx.accounts.marginfi_pda.to_account_info(),
+                    ctx.accounts.signer.to_account_info(),
+                    ctx.accounts.stake_pool_jitosol.to_account_info(),
+                    ctx.accounts.stake_pool_withdraw_authority_jitosol.to_account_info(),
+                    ctx.accounts.reserve_stake_account_jitosol.to_account_info(),
                     ctx.accounts.pool_token_receiver_account_jitosol
                         .to_account_info()
-                        .clone(),
-                        ctx.accounts.manager_fee_account_jitosol.to_account_info().clone(),
-                        ctx.accounts.referrer_token_account_jitosol.to_account_info().clone(),
-                        ctx.accounts.pool_mint_jitosol.to_account_info().clone(),
-                        ctx.accounts.stake_pool_jitosol.to_account_info().clone(),
-                        ctx.accounts.stake_pool_program.to_account_info().clone(),
-                    ctx.accounts.system_program.to_account_info().clone(),
-                    ctx.accounts.token_program.to_account_info().clone(),
+                        ,
+                        ctx.accounts.manager_fee_account_jitosol.to_account_info(),
+                        ctx.accounts.pool_mint_jitosol.to_account_info(),
+                        ctx.accounts.stake_pool_jitosol.to_account_info(),
+                        ctx.accounts.stake_pool_program.to_account_info(),
+                    ctx.accounts.system_program.to_account_info(),
+                    ctx.accounts.token_program.to_account_info(),
                 ]
             )
             .unwrap();
-        
+
+        }
+        {
+            
+            let mut stake_pool_tokens: f64 = 0.0;
+            let rate: f64 = 1_000_000_000 as f64 / bsol_price as f64;
+            let stake_pool_tokens = amount as f64 * rate * (1.0-0.008);
             // mint_to
             let cpi_ctx = CpiContext::new_with_signer(
-                ctx.accounts.token_program_2022.to_account_info().clone(),
+                ctx.accounts.token_program_2022.to_account_info(),
                 MintTo {
-                    mint: ctx.accounts.jarezi_mint.to_account_info().clone(),
-                    to: ctx.accounts.jarezi_token_account.to_account_info().clone(),
-                    authority: ctx.accounts.marginfi_pda.to_account_info().clone(),
+                    mint: ctx.accounts.jarezi_mint.to_account_info(),
+                    to: ctx.accounts.jarezi_token_account.to_account_info(),
+                    authority: ctx.accounts.marginfi_pda.to_account_info(),
                 },
                  &signer,
             );
@@ -943,6 +637,271 @@ impl Deposit<'_> {
             anchor_spl::token_interface::mint_to(cpi_ctx, stake_pool_tokens as u64).unwrap();
         }
 
+        Ok(())
+    }
+    pub fn withdraw(ctx: Context<Deposit>, amount: u64, bsol_price: u64, jitosol_price: u64) -> anchor_lang::Result<()> {
+        
+        let og_amount = amount;
+        let marginfi_pda = ctx.accounts.marginfi_pda.clone();
+        let signer: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], &[marginfi_pda.bump]]];
+
+        // burn tokens
+{
+        solana_program::program::invoke(
+            &spl_token_2022::instruction::burn(
+                &ctx.accounts.token_program_2022.key(),
+                &ctx.accounts.jarezi_token_account.key(),
+                &ctx.accounts.jarezi_mint.key(),
+                &ctx.accounts.signer.key(),
+                &[],
+                amount,
+            )?,
+            &[ctx.accounts.token_program_2022.to_account_info(), ctx.accounts.jarezi_token_account.to_account_info(), ctx.accounts.jarezi_mint.to_account_info(), ctx.accounts.signer.to_account_info(), ctx.accounts.clock.to_account_info()],
+        )
+        .unwrap();
+            
+    }
+    {
+        
+
+         invoke_signed(
+            &spl_stake_pool::instruction::withdraw_sol(
+                &spl_stake_pool::id(),
+                &ctx.accounts.stake_pool_jitosol.key(),
+                &ctx.accounts.stake_pool_withdraw_authority_jitosol.key(),
+                &ctx.accounts.marginfi_pda.key(),
+                &ctx.accounts.pool_token_receiver_account_jitosol.key(),
+                &ctx.accounts.reserve_stake_account_jitosol.key(),
+                &ctx.accounts.signer.key(),
+                &ctx.accounts.manager_fee_account_jitosol.key(),
+                &ctx.accounts.pool_mint_jitosol.key(),
+                &spl_token::id(),
+                amount as u64
+            ),
+            &[
+                ctx.accounts.marginfi_pda.to_account_info(),
+                ctx.accounts.stake_pool_jitosol.to_account_info(),
+                ctx.accounts.stake_pool_withdraw_authority_jitosol.to_account_info(),
+                ctx.accounts.pool_token_receiver_account_jitosol.to_account_info(),
+                ctx.accounts.reserve_stake_account_jitosol.to_account_info(),
+                ctx.accounts.manager_fee_account_jitosol.to_account_info(),
+                ctx.accounts.pool_mint_jitosol.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+                ctx.accounts.token_program.to_account_info(),
+                ctx.accounts.stake_history.to_account_info(),
+                ctx.accounts.stake_program.to_account_info(),
+                ctx.accounts.clock.to_account_info(),
+                ctx.accounts.signer.to_account_info(),
+            ],
+             &signer,
+        )
+        .unwrap();
+}
+{
+        // transfer minimum rent + lamports to to
+
+        let minimum_rent = Rent::get()?.minimum_balance(165);
+        let rate = 1_000_000_000 as f64 / jitosol_price as f64;
+        let lamports = (amount as f64 * rate) as u64;
+
+        invoke(
+            &solana_program::system_instruction::transfer(
+                &ctx.accounts.signer.key(),
+                &ctx.accounts.pool_token_receiver_account_wsol.key(),
+                lamports+minimum_rent,
+            ),
+            &[
+                ctx.accounts.signer.to_account_info(),
+                ctx.accounts.pool_token_receiver_account_wsol.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+        )
+        .unwrap();
+            
+    }
+    {
+        
+
+    solana_program::program::invoke_signed(&spl_token::instruction::sync_native(&spl_token::ID, &ctx.accounts.pool_token_receiver_account_wsol.key())?, &[ctx.accounts.pool_token_receiver_account_wsol.to_account_info()], &signer).unwrap();
+      
+}
+     {
+
+        let minimum_rent = Rent::get()?.minimum_balance(165);
+        let rate = 1_000_000_000 as f64 / jitosol_price as f64;
+        let lamports = (amount as f64 * rate) as u64;
+            // fee of 1/1000
+            let amount = lamports * 999 / 1000;
+            // repay obligatino liquidity
+
+            invoke_signed(
+                &solend_sdk::instruction::repay_obligation_liquidity(
+                    ctx.accounts.solend_sdk.key(),
+                    amount as u64,
+                    ctx.accounts.pool_token_receiver_account_wsol.key(),
+                    ctx.accounts.liquidity_vault_wsol.key(),
+                    ctx.accounts.marginfi_bank_wsol.key(),
+                    ctx.accounts.obligation_pubkey.key(),
+                    ctx.accounts.lending_market_pubkey.key(),
+                    ctx.accounts.marginfi_pda.key()
+                ),
+                &[
+                    ctx.accounts.lending_market_authority_pubkey.to_account_info(),
+                    ctx.accounts.liquidity_vault_wsol.to_account_info(),
+                    ctx.accounts.pool_token_receiver_account_wsol.to_account_info(),
+                    ctx.accounts.marginfi_bank_wsol.to_account_info(),
+                    ctx.accounts.obligation_pubkey.to_account_info(),
+                    ctx.accounts.lending_market_pubkey.to_owned().to_account_info(),
+                    ctx.accounts.marginfi_pda.to_account_info(),
+                    ctx.accounts.system_program.to_account_info(),
+                    ctx.accounts.solend_sdk.to_account_info(),
+                    ctx.accounts.token_program.to_account_info(),
+                ],
+                 &signer,
+            )
+            .unwrap();
+
+            
+            
+        }
+        {
+            
+
+            
+            // withdraw bsol
+
+                invoke_signed(
+                    &solend_sdk::instruction::refresh_reserve(
+                        ctx.accounts.solend_sdk.key(),
+                        ctx.accounts.marginfi_bank.key(),
+                        ctx.accounts.pyth_oracle.key(),
+                        
+                        ctx.accounts.switchboard_oracle.key()
+                    ),
+                    &[
+                        ctx.accounts.marginfi_bank.to_account_info(),
+                        ctx.accounts.pyth_oracle.to_account_info(),
+                        ctx.accounts.solend_sdk.to_account_info(),
+                        ctx.accounts.lending_market_authority_pubkey.to_account_info(),
+                        ctx.accounts.switchboard_oracle.to_account_info(),
+                    ],
+                     &signer,
+                )
+                .unwrap();
+            }
+        {
+            invoke_signed(
+                &solend_sdk::instruction::refresh_reserve(
+                    ctx.accounts.solend_sdk.key(),
+                    ctx.accounts.marginfi_bank_wsol.key(),
+                    ctx.accounts.pyth_oracle2.key(),
+                    
+                    ctx.accounts.switchboard_oracle2.key()
+                ),
+                &[
+                    ctx.accounts.marginfi_bank_wsol.to_account_info(),
+                    ctx.accounts.pyth_oracle2.to_account_info(),
+                    ctx.accounts.solend_sdk.to_account_info(),
+                    ctx.accounts.lending_market_authority_pubkey.to_account_info(),
+                    ctx.accounts.switchboard_oracle2.to_account_info(),
+                ],
+                 &signer,
+            )
+            .unwrap();
+            
+        }
+        {
+            
+
+                invoke_signed(
+                    &solend_sdk::instruction::refresh_obligation(
+                        ctx.accounts.solend_sdk.key(),
+                        ctx.accounts.obligation_pubkey.key(),
+                        vec![ctx.accounts.marginfi_bank.key(),
+                        ctx.accounts.marginfi_bank_wsol.key()],
+                    ),
+                    &[
+                        ctx.accounts.obligation_pubkey.to_account_info(),
+                        ctx.accounts.solend_sdk.to_account_info(),
+                        ctx.accounts.lending_market_authority_pubkey.to_account_info(),
+                        ctx.accounts.marginfi_bank.to_account_info(),
+                        ctx.accounts.marginfi_bank_wsol.to_account_info()
+                    ],
+                     &signer,
+                )
+                .unwrap();
+            }
+            {
+            invoke_signed(
+                &solend_sdk::instruction::withdraw_obligation_collateral_and_redeem_reserve_collateral(
+                    ctx.accounts.solend_sdk.key(),
+                    amount as u64,
+                    ctx.accounts.destination_deposit_collateral_pubkey.key(),
+                    ctx.accounts.user_collateral_pubkey.key(),
+                    ctx.accounts.marginfi_bank.key(),
+                    ctx.accounts.obligation_pubkey.key(),
+                    ctx.accounts.lending_market_pubkey.key(),
+                    ctx.accounts.pool_token_receiver_account.key(),
+                    ctx.accounts.reserve_collateral_mint_pubkey.key(),
+                    ctx.accounts.liquidity_vault.key(),
+                    ctx.accounts.marginfi_pda.key(),
+                    ctx.accounts.marginfi_pda.key()
+                ),
+                &[
+                    ctx.accounts.pool_token_receiver_account.to_account_info(),
+                    ctx.accounts.user_collateral_pubkey.to_account_info(),
+                    ctx.accounts.marginfi_bank.to_account_info(),
+                    ctx.accounts.liquidity_vault.to_account_info(),
+                    ctx.accounts.destination_deposit_collateral_pubkey.to_account_info(),
+                    ctx.accounts.lending_market_pubkey.to_account_info(),
+                    ctx.accounts.reserve_collateral_mint_pubkey.to_account_info(),
+                    ctx.accounts.obligation_pubkey.to_account_info(),
+                    ctx.accounts.marginfi_pda.to_account_info(),
+                    ctx.accounts.marginfi_pda.to_account_info(),
+                    ctx.accounts.system_program.to_account_info(),
+                    ctx.accounts.solend_sdk.to_account_info(),
+                    ctx.accounts.lending_market_authority_pubkey.to_account_info(),
+                ],
+                 &signer,
+            )
+            .unwrap();
+
+            
+        }
+        {
+            
+
+            invoke_signed(
+                &spl_stake_pool::instruction::withdraw_sol(
+                    &spl_stake_pool::id(),
+                    &ctx.accounts.stake_pool.key(),
+                    &ctx.accounts.stake_pool_withdraw_authority.key(),
+                    &ctx.accounts.marginfi_pda.key(),
+                    &ctx.accounts.pool_token_receiver_account.key(),
+                    &ctx.accounts.reserve_stake_account.key(),
+                    &ctx.accounts.signer.key(),
+                    &ctx.accounts.manager_fee_account.key(),
+                    &ctx.accounts.pool_mint.key(),
+                    &spl_token::id(),
+                    amount as u64
+                ),
+                &[
+                    ctx.accounts.marginfi_pda.to_account_info(),
+                    ctx.accounts.signer.to_account_info(),
+                    ctx.accounts.stake_pool.to_account_info(),
+                    ctx.accounts.stake_pool_withdraw_authority.to_account_info(),
+                    ctx.accounts.pool_token_receiver_account.to_account_info(),
+                    ctx.accounts.reserve_stake_account.to_account_info(),
+                    ctx.accounts.manager_fee_account.to_account_info(),
+                    ctx.accounts.pool_mint.to_account_info(),
+                    ctx.accounts.system_program.to_account_info(),
+                    ctx.accounts.token_program.to_account_info(),
+                    ctx.accounts.clock.to_account_info(),
+                ],
+                 &signer,
+            )
+            .unwrap();
+            }
         Ok(())
     }
 }
