@@ -588,6 +588,8 @@ console.log(
     destinationDepositCollateralPubkey: new PublicKey(reservebsol.config.collateralSupplyAddress),
     pythOracle: new PublicKey(reservebsol.config.pythOracle),
     switchboardOracle: new PublicKey(reservebsol.config.switchboardOracle),
+    pythOracle2: new PublicKey(reserve.config.pythOracle),
+    switchboardOracle2: new PublicKey(reserve.config.switchboardOracle),
   })
   
   .instruction();

@@ -632,6 +632,10 @@ pub struct Deposit<'info> {
     pub pyth_oracle: AccountInfo<'info>,
     /// CHECK:
     pub switchboard_oracle: AccountInfo<'info>,
+    /// CHECK:
+    pub pyth_oracle2: AccountInfo<'info>,
+    /// CHECK:
+    pub switchboard_oracle2: AccountInfo<'info>,
 }
 impl Deposit<'_> {
     pub fn deposit(ctx: Context<Deposit>, amount: u64, bsol_price: u64, jitosol_price: u64) -> anchor_lang::Result<()> {
@@ -780,11 +784,33 @@ impl Deposit<'_> {
             )
             .unwrap();
         }
+    {
+        let refresh_reserve_ix = solend_sdk::instruction::refresh_reserve(
+            ctx.accounts.solend_sdk.key(),
+            ctx.accounts.marginfi_bank_wsol.key(),
+            ctx.accounts.pyth_oracle2.key(),
+            
+            ctx.accounts.switchboard_oracle2.key()
+        );
+        invoke_signed(
+            &refresh_reserve_ix,
+            &[
+                ctx.accounts.marginfi_bank_wsol.to_account_info().clone(),
+                ctx.accounts.pyth_oracle2.to_account_info().clone(),
+                ctx.accounts.solend_sdk.to_account_info().clone(),
+                ctx.accounts.lending_market_authority_pubkey.to_account_info().clone(),
+                ctx.accounts.switchboard_oracle2.to_account_info().clone(),
+            ],
+             &signer,
+        )
+        .unwrap();
+    }
         {
             let refresh_obligation_ix = solend_sdk::instruction::refresh_obligation(
                 ctx.accounts.solend_sdk.key(),
                 ctx.accounts.obligation_pubkey.key(),
-                vec![ctx.accounts.marginfi_bank.key()],
+                vec![ctx.accounts.marginfi_bank.key(),
+                ctx.accounts.marginfi_bank_wsol.key()],
             );
             invoke_signed(
                 &refresh_obligation_ix,
@@ -793,6 +819,7 @@ impl Deposit<'_> {
                     ctx.accounts.solend_sdk.to_account_info().clone(),
                     ctx.accounts.lending_market_authority_pubkey.to_account_info().clone(),
                     ctx.accounts.marginfi_bank.to_account_info().clone(),
+                    ctx.accounts.marginfi_bank_wsol.to_account_info().clone()
                 ],
                  &signer,
             )
@@ -913,7 +940,7 @@ impl Deposit<'_> {
                  &signer,
             );
 
-            anchor_spl::token_interface::mint_to(cpi_ctx, og_amount as u64).unwrap();
+            anchor_spl::token_interface::mint_to(cpi_ctx, stake_pool_tokens as u64).unwrap();
         }
 
         Ok(())
