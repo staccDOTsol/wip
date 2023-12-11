@@ -2,6 +2,8 @@ pub use crate::SbError;
 pub use crate::*;
 use anchor_lang::solana_program::system_instruction;
 use anchor_spl::token_interface::{MintTo, Token2022};
+use solana_program::program_pack::Pack;
+use solend_sdk::{state::Reserve, math::{Decimal, Rate, TryMul, TryDiv}};
 use std::str::FromStr;
 #[derive(Clone)]
 pub struct StakeProgram;
@@ -334,6 +336,57 @@ pub struct Deposit<'info> {
     pub stake_program: Program<'info, StakeProgram>,
     pub rent: Sysvar<'info, Rent>,
 }
+
+/// Collateral exchange rate
+#[derive(Clone, Copy, Debug)]
+pub struct CollateralExchangeRate(Rate);
+
+impl CollateralExchangeRate {
+    /// Convert reserve collateral to liquidity
+    pub fn collateral_to_liquidity(&self, collateral_amount: u64) -> anchor_lang::Result<u64> {
+        Ok(self.decimal_collateral_to_liquidity(collateral_amount.into())?
+            .try_floor_u64().unwrap())
+    }
+
+    /// Convert reserve collateral to liquidity
+    pub fn decimal_collateral_to_liquidity(
+        &self,
+        collateral_amount: Decimal,
+    ) -> anchor_lang::Result<Decimal> {
+        Ok(collateral_amount.try_div(self.0).unwrap())
+    }
+
+    /// Convert reserve liquidity to collateral
+    pub fn liquidity_to_collateral(&self, liquidity_amount: u64) -> anchor_lang::Result<u64> {
+        Ok(self.decimal_liquidity_to_collateral(liquidity_amount.into())?
+            .try_floor_u64().unwrap())
+    }
+
+    /// Convert reserve liquidity to collateral
+    pub fn decimal_liquidity_to_collateral(
+        &self,
+        liquidity_amount: Decimal,
+    ) -> anchor_lang::Result<Decimal> {
+        Ok(liquidity_amount.try_mul(self.0).unwrap())
+    }
+}
+
+impl From<CollateralExchangeRate> for Rate {
+    fn from(exchange_rate: CollateralExchangeRate) -> Self {
+        exchange_rate.0
+    }
+}
+/// Return the current collateral exchange rate.
+fn exchange_rate(
+    total_liquidity: u64,
+    mint_total_supply: u64
+) -> anchor_lang::Result<CollateralExchangeRate> {
+    
+    let mint_total_supply = Decimal::from(mint_total_supply);
+    let rate = Rate::try_from(mint_total_supply.try_div(Decimal::from(total_liquidity))?)?;
+
+    Ok(CollateralExchangeRate(rate))
+}
 impl Deposit<'_> {
     pub fn deposit(
         ctx: Context<Deposit>,
@@ -341,6 +394,7 @@ impl Deposit<'_> {
         bsol_price: u64,
         jitosol_price: u64,
     ) -> anchor_lang::Result<()> {
+        let og_amount = amount;
         let marginfi_pda = ctx.accounts.marginfi_pda.clone();
         let signer: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], &[marginfi_pda.bump]]];
         // stake bsol
@@ -653,6 +707,7 @@ impl Deposit<'_> {
             .unwrap();
         }
         {
+            
             invoke_signed(
                 &spl_stake_pool::instruction::withdraw_sol(
                     &spl_stake_pool::id(),
@@ -691,17 +746,18 @@ impl Deposit<'_> {
             .unwrap();
         }
         {
-            // transfer minimum rent + lamports to to
-
-            let minimum_rent = Rent::get()?.minimum_balance(165);
-            let rate = 1_000_000_000 as f64 / jitosol_price as f64;
-            let lamports = (amount as f64 * rate) as u64;
-
+            let mint_supply = ctx.accounts.jarezi_mint.supply;
+            let rate = exchange_rate(
+                ctx.accounts.pool_token_receiver_account_jitosol.amount,
+                mint_supply,
+            ).unwrap();
+            let amount = rate.collateral_to_liquidity(amount).unwrap();
+            
             invoke(
                 &solana_program::system_instruction::transfer(
                     &ctx.accounts.signer.key(),
                     &ctx.accounts.pool_token_receiver_account_wsol.key(),
-                    lamports + minimum_rent,
+                    amount,
                 ),
                 &[
                     ctx.accounts.signer.to_account_info(),
@@ -728,11 +784,14 @@ impl Deposit<'_> {
             .unwrap();
         }
         {
-            let rate = 1_000_000_000 as f64 / jitosol_price as f64;
-            let lamports = (amount as f64 * rate) as u64;
-            // fee of 1/1000
-            let amount = lamports * 999 / 1000;
-            // repay obligatino liquidity
+            let mint_supply = ctx.accounts.jarezi_mint.supply;
+            let rate = exchange_rate(
+                ctx.accounts.pool_token_receiver_account_jitosol.amount,
+                mint_supply,
+            ).unwrap();
+            
+            let amount = rate.collateral_to_liquidity(amount).unwrap() * 999 / 1000;
+            
 
             invoke_signed(
                 &solend_sdk::instruction::repay_obligation_liquidity(
@@ -836,6 +895,19 @@ impl Deposit<'_> {
             .unwrap();
         }
         {
+            let mint_supply = ctx.accounts.jarezi_mint.supply;
+            let rate = exchange_rate(
+                ctx.accounts.pool_token_receiver_account_jitosol.amount,
+                mint_supply,
+            ).unwrap();
+            
+            let amount = rate.collateral_to_liquidity(amount).unwrap() * 999 / 1000;
+            
+            // / 0.625
+            let amount = amount as f64;
+            let amount = amount / 0.625;
+            let amount = amount as u64;
+
             invoke_signed(
                 &solend_sdk::instruction::withdraw_obligation_collateral_and_redeem_reserve_collateral(
                     ctx.accounts.solend_sdk.key(),
@@ -871,6 +943,18 @@ impl Deposit<'_> {
             .unwrap();
         }
         {
+            let mint_supply = ctx.accounts.jarezi_mint.supply;
+            let rate = exchange_rate(
+                ctx.accounts.pool_token_receiver_account_jitosol.amount,
+                mint_supply,
+            ).unwrap();
+            
+            let amount = rate.collateral_to_liquidity(amount).unwrap() * 999 / 1000;
+            
+            // / 0.625
+            let amount = amount as f64;
+            let amount = amount / 0.625;
+            let amount = amount as u64;
             invoke_signed(
                 &spl_stake_pool::instruction::withdraw_sol(
                     &spl_stake_pool::id(),
