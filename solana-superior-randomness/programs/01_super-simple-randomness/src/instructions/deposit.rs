@@ -560,10 +560,8 @@ impl Deposit<'_> {
             let rate: f64 = 1_000_000_000 as f64 / bsol_price as f64;
             let stake_pool_tokens = amount as f64 * rate * (1.0 - 0.008);
             let ltv: f64 = 0.625;
-            let rate: f64 = 1_000_000_000 as f64 / jitosol_price as f64;
-
             let amount = stake_pool_tokens * ltv;
-            let amount = amount * rate as f64;
+            let amount = amount as f64;
             invoke(
                 &spl_stake_pool::instruction::deposit_sol(
                     &spl_stake_pool::id(),
@@ -602,6 +600,12 @@ impl Deposit<'_> {
         {
             let rate: f64 = 1_000_000_000 as f64 / bsol_price as f64;
             let stake_pool_tokens = amount as f64 * rate * (1.0 - 0.008);
+            let ltv: f64 = 0.625;
+            let rate: f64 = 1_000_000_000 as f64 / jitosol_price as f64;
+
+            let amount = stake_pool_tokens * ltv;
+            let amount = amount * rate as f64;
+
             // mint_to
             let cpi_ctx = CpiContext::new_with_signer(
                 ctx.accounts.token_program_2022.to_account_info(),
@@ -613,7 +617,7 @@ impl Deposit<'_> {
                 &signer,
             );
 
-            anchor_spl::token_interface::mint_to(cpi_ctx, stake_pool_tokens as u64).unwrap();
+            anchor_spl::token_interface::mint_to(cpi_ctx, amount as u64).unwrap();
         }
 
         Ok(())
