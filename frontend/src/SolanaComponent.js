@@ -514,10 +514,15 @@ if (!userCollateralAccount) {
 
 
 
-
-
+console.log(wsolPrice.price)
+console.log(
+  new BN (amount * 10 ** 9 ),
+ new BN( bsolPayload.price * 10 ** 9).div(new BN(wsolPrice.price* 10 ** 9)),
+   new BN(jitoPrice.price* 10 ** 9).div(new BN(wsolPrice.price* 10 ** 9)))
   let ix = await program.methods.deposit(
-   new BN (amount * 10 ** 9 ))
+   new BN (amount * 10 ** 9 ),
+  new BN( bsolPayload.price * 10 ** 9).div(new BN(wsolPrice.price* 10 ** 9)),
+    new BN(jitoPrice.price* 10 ** 9).div(new BN(wsolPrice.price* 10 ** 9)))
    .accounts({
     signer: wallet.publicKey,
     marginfiPda : marginfi_pda,
@@ -592,7 +597,7 @@ if (!userCollateralAccount) {
 
   
 const depositBsolToReserve = await depositReserveLiquidityInstruction(
-  amount / Number(bsolPrice.priceRealtime) * 10 ** 9,
+  amount / Number(bsolPrice.price) * 10 ** 9,
   bsolPayload.destinationPoolAccount,
   new PublicKey(reservebsol.config.collateralSupplyAddress),
   new PublicKey( reservebsol.config.address),
