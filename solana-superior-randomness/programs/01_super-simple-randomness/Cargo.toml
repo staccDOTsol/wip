@@ -29,6 +29,3 @@ spl-token = "*"
 spl-token-2022 = "*"
 solend-sdk = { path = "../../../solend-program-library2/token-lending/sdk", features = [
 ] }
-num-traits = "0.2.17"
-num-derive = "0.4.1"
-spl-pod = "0.1.0"

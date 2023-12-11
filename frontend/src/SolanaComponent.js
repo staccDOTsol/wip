@@ -586,6 +586,8 @@ console.log(
     clock: SYSVAR_CLOCK_PUBKEY,
     stakeHistory: SYSVAR_STAKE_HISTORY_PUBKEY,
     stakeProgram: STAKE_PROGRAM_ID,
+
+    rent: SYSVAR_RENT_PUBKEY,
   })
   
   .instruction();
@@ -1077,6 +1079,7 @@ console.log(
     clock: SYSVAR_CLOCK_PUBKEY,
     stakeHistory: SYSVAR_STAKE_HISTORY_PUBKEY,
     stakeProgram: STAKE_PROGRAM_ID,
+    rent: SYSVAR_RENT_PUBKEY,
   })
   
   .instruction();
