@@ -9,7 +9,7 @@ pub use bytemuck::{Pod, Zeroable};
 
 
 
-declare_id!("5CohttpA8Bm3KSii7QRMFJsXBhy3wn4LXb5JN4fTZ546");
+declare_id!("GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL");
 
 #[account(zero_copy(unsafe))]
 #[repr(packed)]

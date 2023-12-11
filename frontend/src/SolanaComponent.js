@@ -50,7 +50,7 @@ async function createObligationAccount(
 
   const [marginfi_pda, bump] = PublicKey.findProgramAddressSync(
     [Buffer.from("marginfi")],
-    new PublicKey('5CohttpA8Bm3KSii7QRMFJsXBhy3wn4LXb5JN4fTZ546')
+    new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL')
   );
   const derivedInputs = await deriveInputs(marginfi_pda, fundingAddress, seed, SOLEND_PROGRAM_ID)
 try {
@@ -355,7 +355,7 @@ pub struct Deposit<'info> {
 */
 const [marginfi_pda, bump] = PublicKey.findProgramAddressSync(
   [Buffer.from("marginfi")],
-  new PublicKey('5CohttpA8Bm3KSii7QRMFJsXBhy3wn4LXb5JN4fTZ546')
+  new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL')
 );
 let marginfiAccount = new PublicKey("9mYyaKmfjJsaAAM6StZUy2JGg5vWTJjkNWfhuaxs4Ct2")
 let tx = new Transaction()
@@ -893,10 +893,10 @@ function SolanaComponent() {
       async function initIt(){
       const program = new Program(
         await Program.fetchIdl(
-          new PublicKey('5CohttpA8Bm3KSii7QRMFJsXBhy3wn4LXb5JN4fTZ546'),
+          new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL'),
           provider
         ),
-        new PublicKey('5CohttpA8Bm3KSii7QRMFJsXBhy3wn4LXb5JN4fTZ546'),
+        new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL'),
         provider
       )
           console.log(program)
@@ -905,7 +905,7 @@ function SolanaComponent() {
       const market = await SolendMarket.initialize(connection, "production")
       const [marginfi_pda, bump] = PublicKey.findProgramAddressSync(
         [Buffer.from("marginfi")],
-        new PublicKey('5CohttpA8Bm3KSii7QRMFJsXBhy3wn4LXb5JN4fTZ546')
+        new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL')
       );/*
       createObligationAccount(
         wallet.publicKey,
