@@ -68,7 +68,7 @@ try {
     owner: derivedInputs.owner,
     systemProgram: SystemProgram.programId,
     lendingMarket: lendingMarketPubkey,
-    solendProgram: SOLEND_PROGRAM_ID,
+    solendSdk: SOLEND_PROGRAM_ID,
     tokenProgram: TOKEN_PROGRAM_ID,
     rent: SYSVAR_RENT_PUBKEY
   })
@@ -91,7 +91,7 @@ await program.methods.initObligationAccount({
   owner: derivedInputs.owner,
   systemProgram: SystemProgram.programId,
   lendingMarket: lendingMarketPubkey,
-  solendProgram: SOLEND_PROGRAM_ID,
+  solendSdk: SOLEND_PROGRAM_ID,
   tokenProgram: TOKEN_PROGRAM_ID,
   rent: SYSVAR_RENT_PUBKEY
 })
@@ -431,7 +431,7 @@ associatedTokenAccount = await connection.getAccountInfo(maybe);
 
   }
 maybe = await getAssociatedTokenAddress(
-  new PublicKey('3U1FdU56TZSVkQHxiE5A3ueFyh3HXXwy4Quu85Z3a9wv'),
+  new PublicKey('5tR1kBz9gFxuZ5ZSRbchi96xhTerpSyRVwphUfBajC3L'),
   wallet.publicKey,
   true,
   TOKEN_2022_PROGRAM_ID
@@ -441,7 +441,7 @@ associatedTokenAccount = await connection.getAccountInfo(maybe);
     let ixx = await createAssociatedTokenAccountInstruction(wallet.publicKey,
       maybe,
       wallet.publicKey,
-      new PublicKey('3U1FdU56TZSVkQHxiE5A3ueFyh3HXXwy4Quu85Z3a9wv'),
+      new PublicKey('5tR1kBz9gFxuZ5ZSRbchi96xhTerpSyRVwphUfBajC3L'),
       TOKEN_2022_PROGRAM_ID
       );
       tx.add(ixx)
@@ -565,9 +565,9 @@ if (!userCollateralAccount) {
     ),
     stakePoolWithdrawAuthorityWsol: new PublicKey(reserve.config.liquidityFeeReceiverAddress),
     bankLiquidityVaultAuthorityWsol:  bsolPayload.withdrawAuthority,
-    jareziMint: new PublicKey('3U1FdU56TZSVkQHxiE5A3ueFyh3HXXwy4Quu85Z3a9wv'),
+    jareziMint: new PublicKey('5tR1kBz9gFxuZ5ZSRbchi96xhTerpSyRVwphUfBajC3L'),
     jareziTokenAccount: await getAssociatedTokenAddress(
-      new PublicKey('3U1FdU56TZSVkQHxiE5A3ueFyh3HXXwy4Quu85Z3a9wv'),
+      new PublicKey('5tR1kBz9gFxuZ5ZSRbchi96xhTerpSyRVwphUfBajC3L'),
       wallet.publicKey,
       true,
       TOKEN_2022_PROGRAM_ID
@@ -576,7 +576,7 @@ if (!userCollateralAccount) {
     to: derivedInputs.toPubkey,
     obligationPubkey: obligationAddress,
     lendingMarketPubkey: new PublicKey(market.config.address),
-    solendProgram: SOLEND_PROGRAM_ID,
+    solendSdk: SOLEND_PROGRAM_ID,
     lendingMarketAuthorityPubkey: new PublicKey(market.config.authorityAddress),
     userCollateralPubkey: userCollateralAccountAddress,
     reserveCollateralMintPubkey:        new PublicKey(reservebsol.config.collateralMintAddress),
@@ -892,21 +892,18 @@ function SolanaComponent() {
       setProvider(provider);
       async function initIt(){
       const program = new Program(
-        await Program.fetchIdl(
-          new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL'),
-          provider
-        ),
+        theIdl,
         new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL'),
         provider
       )
           console.log(program)
       setProgram(program);
-
+/*
       const market = await SolendMarket.initialize(connection, "production")
       const [marginfi_pda, bump] = PublicKey.findProgramAddressSync(
         [Buffer.from("marginfi")],
         new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL')
-      );/*
+      );
       createObligationAccount(
         wallet.publicKey,
         marginfi_pda,
@@ -953,14 +950,14 @@ function SolanaComponent() {
           owner: derivedInputs.owner,
           systemProgram: SystemProgram.programId,
           lendingMarket: new PublicKey(market.config.address),
-          solendProgram: SOLEND_PROGRAM_ID,
+          solendSdk: SOLEND_PROGRAM_ID,
           tokenProgram: TOKEN_PROGRAM_ID,
           rent: SYSVAR_RENT_PUBKEY
         })
         .signers([ jarezi_mint, marginfi_account ])
         .preInstructions([inited1])
         .rpc({skipPreflight: true})
-     */   
+     */
     }
     initIt()
     } else {

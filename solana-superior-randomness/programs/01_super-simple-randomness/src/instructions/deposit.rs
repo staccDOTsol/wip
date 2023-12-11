@@ -239,7 +239,7 @@ pub struct Deposit<'info> {
         token::mint = pool_mint,
     )]
     pub pool_token_receiver_account: Box<Account<'info, TokenAccount>>,
-    #[account(mut, token::authority = Pubkey::from_str("Gf3sbc5Jb62jH7WcTr3WSNGDQLk1w6wcKMZXKK1SC1E6").unwrap(),
+    #[account(mut,
         token::mint = pool_mint,
     )]
     pub referrer_token_account: Box<Account<'info, TokenAccount>>,
@@ -305,7 +305,7 @@ pub struct Deposit<'info> {
         
     )]
     pub pool_token_receiver_account_jitosol: Box<Account<'info, TokenAccount>>,
-    #[account(mut, token::authority = Pubkey::from_str("Gf3sbc5Jb62jH7WcTr3WSNGDQLk1w6wcKMZXKK1SC1E6").unwrap(),
+    #[account(mut,
         token::mint = pool_mint_jitosol,
         
         
