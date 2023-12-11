@@ -722,7 +722,7 @@ impl Deposit<'_> {
                     ctx.accounts.obligation_pubkey.key(),
                     ctx.accounts.marginfi_pda.key(),
                     ctx.accounts.pyth_oracle.key(),
-                    Pubkey::from_str("nu11111111111111111111111111111111111111111").unwrap(),
+                    ctx.accounts.switchboard_oracle.key(),
                     ctx.accounts.marginfi_pda.key(),
                 );
             invoke_signed(
@@ -768,7 +768,8 @@ impl Deposit<'_> {
                 ctx.accounts.solend_sdk.key(),
                 ctx.accounts.marginfi_bank.key(),
                 ctx.accounts.pyth_oracle.key(),
-                Pubkey::from_str("nu11111111111111111111111111111111111111111").unwrap()
+                
+                ctx.accounts.switchboard_oracle.key()
             );
             invoke_signed(
                 &refresh_reserve_ix,
