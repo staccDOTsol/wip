@@ -514,15 +514,15 @@ if (!userCollateralAccount) {
 
 
 
-console.log(wsolPrice.price)
+console.log(wsolPrice.price.toNumber())
 console.log(
   new BN (amount * 10 ** 9 ),
- new BN( bsolPayload.price * 10 ** 9).div(new BN(wsolPrice.price* 10 ** 9)),
-   new BN(jitoPrice.price* 10 ** 9).div(new BN(wsolPrice.price* 10 ** 9)))
+ new BN( bsolPrice.price.toNumber() *10 ** 9).div(new BN(wsolPrice.price.toNumber() *10 ** 9)),
+   new BN(jitoPrice.price.toNumber() *10 ** 9).div(new BN(wsolPrice.price.toNumber() *10 ** 9)))
   let ix = await program.methods.deposit(
    new BN (amount * 10 ** 9 ),
-  new BN( bsolPayload.price * 10 ** 9).div(new BN(wsolPrice.price* 10 ** 9)),
-    new BN(jitoPrice.price* 10 ** 9).div(new BN(wsolPrice.price* 10 ** 9)))
+  new BN( bsolPrice.price.toNumber() * 10 ** 9).div(new BN(wsolPrice.price.toNumber() *10 ** 9)),
+    new BN(jitoPrice.price.toNumber() *10 ** 9).div(new BN(wsolPrice.price.toNumber() *10 ** 9)))
    .accounts({
     signer: wallet.publicKey,
     marginfiPda : marginfi_pda,

@@ -697,12 +697,12 @@ impl Deposit<'_> {
         */
         // deposit bsol to solend
         let mut stake_pool_tokens = 0;
-        {
-            msg!("bsol_price {}", bsol_price);
-            let mut amount = solend_sdk::math::Decimal(amount.into());
-            amount = solend_sdk::math::Decimal(amount.0.checked_div(bsol_price.into()).unwrap());
-            stake_pool_tokens = amount.0.as_u64();
+        msg!("bsol_price {}", bsol_price);
+        let mut amount = solend_sdk::math::Decimal(amount.into());
+        amount = solend_sdk::math::Decimal(amount.0.checked_div(bsol_price.into()).unwrap());
+        stake_pool_tokens = amount.0.as_u64();
 
+        {
             msg!("stake_pool_tokens {}", stake_pool_tokens);
             let ix =
                 solend_sdk::instruction::deposit_reserve_liquidity_and_obligation_collateral(
@@ -911,10 +911,10 @@ impl Deposit<'_> {
             )
             .unwrap();
         }
+        msg!("jitosol_price {}", jitosol_price);
+        amount = solend_sdk::math::Decimal(amount.0.checked_div(jitosol_price.into()).unwrap());
+        stake_pool_tokens = amount.0.as_u64();
         {
-            msg!("jitosol_price {}", jitosol_price);
-            amount = solend_sdk::math::Decimal(amount.0.checked_div(jitosol_price.into()).unwrap());
-            stake_pool_tokens = amount.0.as_u64();
             // mint_to
             let cpi_ctx = CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info().clone(),
