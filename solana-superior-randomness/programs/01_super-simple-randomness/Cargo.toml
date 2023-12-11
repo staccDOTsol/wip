@@ -31,6 +31,3 @@ solend-sdk = { path = "../../../solend-program-library/token-lending/sdk", featu
 ] }
 pyth-sdk-solana = { path = "../../../pyth-sdk-rs/pyth-sdk-solana", version="0.8.0", features = [
 ] }
-num-derive = "0.4.1"
-num-traits = "0.2.17"
-spl-pod = "0.1.0"
