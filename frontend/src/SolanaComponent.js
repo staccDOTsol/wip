@@ -620,7 +620,7 @@ const computeBudgetIx =await ComputeBudgetProgram.setComputeUnitLimit(
   const messageWithLookupTable = new TransactionMessage({
     payerKey: wallet.publicKey,
     recentBlockhash: latestBlockhash.blockhash,
-    instructions: [computeBudgetIx, obRefresh, refresh, refresh_bsol, ix]
+    instructions: [computeBudgetIx, ix]
 }).compileToV0Message([lookupTable, lookupTable2]); // 👈 NOTE: We DO include the lookup table
 const transactionWithLookupTable = new VersionedTransaction(messageWithLookupTable);
 

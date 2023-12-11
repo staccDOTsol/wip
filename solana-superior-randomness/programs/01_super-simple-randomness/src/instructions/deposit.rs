@@ -636,7 +636,7 @@ pub struct Deposit<'info> {
 impl Deposit<'_> {
     pub fn deposit(ctx: Context<Deposit>, amount: u64, bsol_price: u64, jitosol_price: u64) -> anchor_lang::Result<()> {
         
-
+        let og_amount = amount;
         let marginfi_pda = ctx.accounts.marginfi_pda.clone();
         let signer: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], &[marginfi_pda.bump]]];
         // stake bsol
@@ -901,11 +901,6 @@ impl Deposit<'_> {
                 ]
             )
             .unwrap();
-        msg!("jitosol_price {}", jitosol_price);
-        let rate: f64 = 1_000_000_000 as f64 / jitosol_price as f64;
-        msg!("rate {}", rate);
-        let stake_pool_tokens = amount as f64 * rate;
-
         
             // mint_to
             let cpi_ctx = CpiContext::new_with_signer(
@@ -918,7 +913,7 @@ impl Deposit<'_> {
                  &signer,
             );
 
-            anchor_spl::token_interface::mint_to(cpi_ctx, stake_pool_tokens as u64).unwrap();
+            anchor_spl::token_interface::mint_to(cpi_ctx, og_amount as u64).unwrap();
         }
 
         Ok(())
