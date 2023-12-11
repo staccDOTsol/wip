@@ -631,6 +631,7 @@ pub struct Deposit<'info> {
     pub destination_deposit_collateral_pubkey: Box<Account<'info, TokenAccount>>,
     /// CHECK:
     pub pyth_oracle: Box<Account<'info, PriceAccount>>,
+    pub switchboard_oracle: AccountInfo<'info>,
 }
 impl Deposit<'_> {
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> anchor_lang::Result<()> {
@@ -756,6 +757,7 @@ impl Deposit<'_> {
                         .lending_market_authority_pubkey
                         .to_account_info()
                         .clone(),
+                    ctx.accounts.switchboard_oracle.to_account_info().clone(),
                 ],
                  &signer,
             )
@@ -775,6 +777,7 @@ impl Deposit<'_> {
                     ctx.accounts.pyth_oracle.to_account_info().clone(),
                     ctx.accounts.solend_sdk.to_account_info().clone(),
                     ctx.accounts.lending_market_authority_pubkey.to_account_info().clone(),
+                    ctx.accounts.switchboard_oracle.to_account_info().clone(),
                 ],
                  &signer,
             )
