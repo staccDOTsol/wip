@@ -16,7 +16,7 @@ import { MarinadeFinanceProgram } from '@marinade.finance/marinade-ts-sdk/dist/s
 import { STAKE_PROGRAM_ID, SYSTEM_PROGRAM_ID } from '@marinade.finance/marinade-ts-sdk/dist/src/util';
 import { AnchorProvider, Program } from '@coral-xyz/anchor';
 import { BN } from 'bn.js';
-let winwin = new PublicKey('Gf3sbc5Jb62jH7WcTr3WSNGDQLk1w6wcKMZXKK1SC1E6')
+let winwin = new PublicKey('JARehRjGUkkEShpjzfuV4ERJS25j8XhamL776FAktNGm')
 async function deriveObligationAddressFromWalletAndSeed(
   walletAddress,
   lendingMarketPubkey,
