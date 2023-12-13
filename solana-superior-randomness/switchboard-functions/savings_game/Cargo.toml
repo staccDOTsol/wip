@@ -34,3 +34,5 @@ solana-client = "*"
 solana-account-decoder = "*"
 spl-token-2022 = "*"
 spl-associated-token-account = "*"
+
+solend-sdk = { path = "../../programs/solend-program-library2/token-lending/sdk", features = [] }

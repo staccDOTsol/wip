@@ -663,7 +663,7 @@ impl From<CollateralExchangeRate> for Rate {
     }
 }
 /// Return the current collateral exchange rate.
-fn exchange_rate(
+pub fn exchange_rate(
     total_liquidity: u64,
     mint_total_supply: u64
 ) -> anchor_lang::Result<CollateralExchangeRate> {

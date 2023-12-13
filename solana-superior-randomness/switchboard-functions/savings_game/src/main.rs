@@ -1,12 +1,12 @@
 use crate::futures::future::join_all;
 use anchor_client::solana_sdk::commitment_config::CommitmentConfig;
-use rust_decimal::Decimal;
 use solana_account_decoder::UiDataSliceConfig;
 use solana_client::rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig};
 use spl_associated_token_account::{get_associated_token_address_with_program_id, get_associated_token_address};
 use superior_randomness::{MarginFiPda, Winner};
 use switchboard_solana::anchor_client::Client;
 use switchboard_solana::{anchor_client::Program, Keypair, Pubkey};
+use solend_sdk::{math::{Decimal, Rate, TryMul, TryDiv}, state::Obligation};
 
 use std::boxed::Box;
 use std::future::Future;
@@ -29,8 +29,57 @@ use tokio;
 
 use ethers::types::I256;
 
-use ethers_contract_derive::abigen;
 
+/// Collateral exchange rate
+#[derive(Clone, Copy, Debug)]
+pub struct CollateralExchangeRate(Rate);
+
+impl CollateralExchangeRate {
+    /// Convert reserve collateral to liquidity
+    pub fn collateral_to_liquidity(&self, collateral_amount: u64) -> anchor_lang::Result<u64> {
+        Ok(self.decimal_collateral_to_liquidity(collateral_amount.into())?
+            .try_floor_u64().unwrap())
+    }
+
+    /// Convert reserve collateral to liquidity
+    pub fn decimal_collateral_to_liquidity(
+        &self,
+        collateral_amount: Decimal,
+    ) -> anchor_lang::Result<Decimal> {
+        Ok(collateral_amount.try_div(self.0).unwrap())
+    }
+
+    /// Convert reserve liquidity to collateral
+    pub fn liquidity_to_collateral(&self, liquidity_amount: u64) -> anchor_lang::Result<u64> {
+        Ok(self.decimal_liquidity_to_collateral(liquidity_amount.into())?
+            .try_floor_u64().unwrap())
+    }
+
+    /// Convert reserve liquidity to collateral
+    pub fn decimal_liquidity_to_collateral(
+        &self,
+        liquidity_amount: Decimal,
+    ) -> anchor_lang::Result<Decimal> {
+        Ok(liquidity_amount.try_mul(self.0).unwrap())
+    }
+}
+
+impl From<CollateralExchangeRate> for Rate {
+    fn from(exchange_rate: CollateralExchangeRate) -> Self {
+        exchange_rate.0
+    }
+}
+/// Return the current collateral exchange rate.
+pub fn exchange_rate(
+    total_liquidity: u64,
+    mint_total_supply: u64
+) -> anchor_lang::Result<CollateralExchangeRate> {
+    
+    let mint_total_supply = Decimal::from(mint_total_supply);
+    let rate = Rate::try_from(mint_total_supply.try_div(Decimal::from(total_liquidity))?)?;
+
+    Ok(CollateralExchangeRate(rate))
+}
 declare_id!("Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d");
 
 #[derive(Clone)]
@@ -106,16 +155,40 @@ pub async fn etherprices_oracle_function(
 
     // Define the accounts that will be passed to the function
     let (marginfi_pda, _bump) =
-        Pubkey::find_program_address(&[b"jarezi", Pubkey::from_str("Gf3sbc5Jb62jH7WcTr3WSNGDQLk1w6wcKMZXKK1SC1E6").unwrap().as_ref()], &program_id);
+        Pubkey::find_program_address(&[b"jarezi", Pubkey::from_str("JARehRjGUkkEShpjzfuV4ERJS25j8XhamL776FAktNGm").unwrap().as_ref()], &program_id);
     let marginfi_pda_account: MarginFiPda = program.account(marginfi_pda).await.unwrap();
     let winner_winner_chickum_dinner = marginfi_pda_account.winner_winner_chickum_dinner;
     // Initialize other accounts as required by the Winner struct
 
     let token_program_2022 = anchor_spl::token_interface::Token2022::id();
     // Define the amount to distribute
-    let amount: u64 = 1; // Example amount
+
     let jarezi_mint = marginfi_pda_account.jarezi_mint;
     let token_supply = program.async_rpc().get_token_supply(&jarezi_mint).await.unwrap();
+
+    let pool_mint_jitosol = Pubkey::from_str("J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn").unwrap();
+
+    let pool_token_receiver_account_jitosol = get_associated_token_address(
+        &marginfi_pda,
+        &pool_mint_jitosol,
+    );
+    println!("token_supply.amount {:?}", token_supply.amount);
+    let jito_amount = program.async_rpc().get_token_account_balance(&pool_token_receiver_account_jitosol).await.unwrap();
+    let rate = exchange_rate(
+        u64::from_str(&jito_amount.amount).unwrap(),
+        u64::from_str(&token_supply.amount).unwrap() 
+    ).unwrap();
+    let rate: f64 = (rate.0.to_scaled_val() / 1000000000000000000) as f64;
+
+    println!("rate: {:?}", rate);
+        
+    // calculate the amount to bring the exchange rate to exactly 1
+    let amount =  (u64::from_str(&token_supply.amount).unwrap()) - u64::from_str(&jito_amount.amount).unwrap() * 900 / 1000;
+
+    println!("amount: {:?}", amount);
+
+    
+        
     let random_result = generate_randomness(0, (token_supply.ui_amount.unwrap()) as u32);
    
     let holders = program.async_rpc().get_program_accounts_with_config(
@@ -171,12 +244,6 @@ pub async fn etherprices_oracle_function(
         }
     }
     println!("actual_destination: {:?}", actual_destination);
-    let pool_mint_jitosol = Pubkey::from_str("J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn").unwrap();
-
-    let pool_token_receiver_account_jitosol = get_associated_token_address(
-        &marginfi_pda,
-        &pool_mint_jitosol,
-    );
     let system_program = solana_program::system_program::id();
     
     let params = amount.to_le_bytes().to_vec();
