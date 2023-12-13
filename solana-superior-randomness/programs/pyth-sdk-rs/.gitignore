@@ -1,0 +1,9 @@
+*.swp
+debug
+target
+Cargo.lock
+artifacts/
+
+# IntelliJ temp files
+.idea
+*.iml

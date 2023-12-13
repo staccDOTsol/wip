@@ -1539,6 +1539,6 @@ export const theIdl = {
               }
             ],
             "metadata": {
-              "address": "GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL"
+              "address": "Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d"
             }
           }

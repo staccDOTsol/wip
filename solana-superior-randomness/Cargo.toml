@@ -1,5 +1,6 @@
 [workspace]
-members = ["programs/*"]
+members = ["programs/02_usd*"]
+exclude = ["programs/usd*"]
 
 [profile.release]
 overflow-checks = true

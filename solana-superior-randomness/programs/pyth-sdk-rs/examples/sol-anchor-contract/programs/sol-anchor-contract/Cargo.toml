@@ -1,0 +1,22 @@
+[package]
+name = "sol-anchor-contract"
+version = "0.1.0"
+description = "Created with Anchor"
+rust-version = "1.60"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "sol_anchor_contract"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.29.0"
+pyth-sdk = { path = "../../../../pyth-sdk", version = "0.8.0" }
+pyth-sdk-solana = { path = "../../../../pyth-sdk-solana", version = "0.8.0" }

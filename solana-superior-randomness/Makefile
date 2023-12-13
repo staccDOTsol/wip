@@ -2,16 +2,16 @@
 # (-include to ignore error if it does not exist)
 -include .env
 
-.PHONY: build clean publish test
+.PHONY: build publish
 
 # Variables
-DOCKER_IMAGE_NAME = mgild/superior-randomness2
+
 
 check_docker_env:
-ifeq ($(strip $(DOCKER_IMAGE_NAME)),)
-	$(error DOCKER_IMAGE_NAME is not set)
+ifeq ($(strip $(DOCKERHUB_ORGANIZATION)),)
+	$(error DOCKERHUB_ORGANIZATION is not set)
 else
-	@echo DOCKER_IMAGE_NAME: ${DOCKER_IMAGE_NAME}
+	@echo DOCKERHUB_ORGANIZATION: jrsdunn
 endif
 
 # Default make task
@@ -19,35 +19,55 @@ all: anchor_sync build
 
 anchor_sync :; anchor keys sync
 anchor_build :; anchor build
-anchor_publish:; make -j 2 superior-flip-deploy callback-flip-deploy
 
-docker_build:
-	docker buildx build --platform linux/amd64 -f ./switchboard-function/Dockerfile -t ${DOCKER_IMAGE_NAME} --load ./switchboard-function
-docker_publish:
-	docker buildx build --platform linux/amd64 --pull -f ./switchboard-function/Dockerfile -t ${DOCKER_IMAGE_NAME} --push ./switchboard-function
+build: anchor_build docker_build measurement
 
+build-basic-function: check_docker_env
+	docker buildx build --pull --platform linux/amd64 \
+		-f ./switchboard-functions/02_usdy_usdc_oracle_function_rust/Dockerfile \
+		-t jrsdunn/solana-lst-oracle-function:latest \
+		./
+
+publish-basic-function: check_docker_env
+	docker buildx build --pull --platform linux/amd64 \
+		-f ./switchboard-functions/02_usdy_usdc_oracle_function_rust/Dockerfile \
+		-t jrsdunn/solana-lst-oracle-function:latest \
+		--push \
+		./
+
+build-basic-function2: check_docker_env
+	docker buildx build --pull --platform linux/amd64 \
+		-f ./switchboard-functions/savings_game/Dockerfile \
+		-t jrsdunn/savings-game:latest \
+		./
+
+publish-basic-function2: check_docker_env
+	docker buildx build --pull --platform linux/amd64 \
+		-f ./switchboard-functions/savings_game/Dockerfile \
+		-t jrsdunn/savings-game:latest \
+		--push \
+		./
 build: docker_build measurement
 
-dev: dev_docker_build measurement
-
-publish: docker_publish measurement
+publish: build-basic-function measurement
 
 measurement: check_docker_env
-	@docker run -d --platform=linux/amd64 -q --name=my-switchboard-function ${DOCKER_IMAGE_NAME}:latest
-	@docker cp my-switchboard-function:/measurement.txt ./measurement.txt
+	@docker run -d --platform=linux/amd64 -q --name=my-switchboard-function \
+		jrsdunn/savings-game:latest > /dev/null
+	@docker cp my-switchboard-function:/measurement.txt measurement.txt
 	@echo -n 'MrEnclve: '
 	@cat measurement.txt
 	@docker stop my-switchboard-function > /dev/null
 	@docker rm my-switchboard-function > /dev/null
 
-superior-flip:
-	anchor run superior-flip
-superior-flip-deploy:
-	anchor build -p superior_randomness
-	anchor deploy --provider.cluster devnet -p superior_randomness
-
-# Task to clean up the compiled rust application
-clean:
-	cargo clean
-
-
+docker_build: check_docker_env
+	docker buildx build --builder cloud-switchboardlabs-default --pull --platform linux/amd64 \
+		-f ./switchboard-functions/02_usdy_usdc_oracle_function_rust/Dockerfile \
+		-t jrsdunn/solana-lst-oracle-function:latest \
+		./switchboard-functions/02_usdy_usdc_oracle_function_rust
+docker_publish: check_docker_env
+	docker buildx build --builder cloud-switchboardlabs-default --pull --platform linux/amd64 \
+		-f ./switchboard-functions/02_usdy_usdc_oracle_function_rust/Dockerfile \
+		-t jrsdunn/solana-lst-oracle-function:latest \
+		--push \
+		./switchboard-functions/02_usdy_usdc_oracle_function_rust

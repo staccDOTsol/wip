@@ -5,8 +5,8 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 // Import other necessary libraries and dependencies
 import {  AddressLookupTableProgram, ComputeBudgetInstruction, ComputeBudgetProgram, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey,  SYSVAR_CLOCK_PUBKEY,  SYSVAR_RENT_PUBKEY,  SYSVAR_STAKE_HISTORY_PUBKEY,  SystemProgram,  Transaction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 import { AccountType, getConfig, MarginfiClient} from "@mrgnlabs/marginfi-client-v2";
-import { NATIVE_MINT, TOKEN_PROGRAM_ID, createAssociatedTokenAccountInstruction, createInitializeAccountInstruction, createSyncNativeInstruction, getMinimumBalanceForRentExemptAccount, shortenAddress, parseOracleSetup } from "@mrgnlabs/mrgn-common";
-import { ACCOUNT_SIZE, TOKEN_2022_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token'
+import { NATIVE_MINT, TOKEN_PROGRAM_ID, createAssociatedTokenAccountInstruction, createInitializeAccountInstruction, createSyncNativeInstruction, shortenAddress, parseOracleSetup } from "@mrgnlabs/mrgn-common";
+import { ACCOUNT_SIZE, TOKEN_2022_PROGRAM_ID, createTransferCheckedInstruction, getAssociatedTokenAddress, getMinimumBalanceForRentExemptAccount, syncNative } from '@solana/spl-token'
 import { WalletConnectButton, WalletDisconnectButton, WalletModalButton, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import * as solanaStakePool from '@solana/spl-stake-pool';
 import { Marinade, MarinadeConfig, Wallet } from '@marinade.finance/marinade-ts-sdk'
@@ -16,7 +16,7 @@ import { MarinadeFinanceProgram } from '@marinade.finance/marinade-ts-sdk/dist/s
 import { STAKE_PROGRAM_ID, SYSTEM_PROGRAM_ID } from '@marinade.finance/marinade-ts-sdk/dist/src/util';
 import { AnchorProvider, Program } from '@coral-xyz/anchor';
 import { BN } from 'bn.js';
-
+let winwin = new PublicKey('Gf3sbc5Jb62jH7WcTr3WSNGDQLk1w6wcKMZXKK1SC1E6')
 async function deriveObligationAddressFromWalletAndSeed(
   walletAddress,
   lendingMarketPubkey,
@@ -31,13 +31,9 @@ async function createObligationAccount(
   fundingAddress,
   walletAddress,
   lendingMarketPubkey,
-  program
+  program,
+  winnerWinnerChickumDinner
 ){
-  const newAccountPubkey = await deriveObligationAddressFromWalletAndSeed(
-    walletAddress,
-    lendingMarketPubkey
-  )
-
   const {
     seed,
     lamports,
@@ -49,35 +45,15 @@ async function createObligationAccount(
   }
 
   const [marginfi_pda, bump] = PublicKey.findProgramAddressSync(
-    [Buffer.from("jarezi")],
-    new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL')
+    [Buffer.from("jarezi"),
+    winnerWinnerChickumDinner.toBuffer()],
+    new PublicKey('Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d')
   );
   const derivedInputs = await deriveInputs(marginfi_pda, fundingAddress, seed, SOLEND_PROGRAM_ID)
-try {
+  
+
+return [
   await program.methods.createSeededAccount({
-    seed: seed,
-    lamports: new BN(lamports),
-    space: new BN(space),
-    bump: new BN(bump),
-  })
-  .accounts({
-    program: marginfi_pda,
-    from: derivedInputs.fromPubkey,
-    to: derivedInputs.toPubkey,
-    base:  derivedInputs.base,
-    owner: derivedInputs.owner,
-    systemProgram: SystemProgram.programId,
-    lendingMarket: lendingMarketPubkey,
-    solendSdk: SOLEND_PROGRAM_ID,
-    tokenProgram: TOKEN_PROGRAM_ID,
-    rent: SYSVAR_RENT_PUBKEY
-  })
-  .rpc({skipPreflight: true, commitment: 'confirmed'})
-}
-catch (err){
-  console.log(err)
-}
-await program.methods.initObligationAccount({
   seed: seed,
   lamports: new BN(lamports),
   space: new BN(space),
@@ -85,9 +61,10 @@ await program.methods.initObligationAccount({
 })
 .accounts({
   program: marginfi_pda,
-  from: derivedInputs.fromPubkey,
+  winnerWinnerChickumDinner,
+  from: fundingAddress,
   to: derivedInputs.toPubkey,
-  base:  derivedInputs.base,
+  base:  marginfi_pda,
   owner: derivedInputs.owner,
   systemProgram: SystemProgram.programId,
   lendingMarket: lendingMarketPubkey,
@@ -95,22 +72,13 @@ await program.methods.initObligationAccount({
   tokenProgram: TOKEN_PROGRAM_ID,
   rent: SYSVAR_RENT_PUBKEY
 })
-.rpc({skipPreflight: true, commitment: 'confirmed'})
-  return SystemProgram.createAccountWithSeed({
-    basePubkey: walletAddress,
-    fromPubkey: fundingAddress,
-    newAccountPubkey,
-    programId: SOLEND_PROGRAM_ID,
-    seed,
-    lamports,
-    space,
-  })
+.instruction()]
 }
 const SOLEND_PROGRAM_ID = new PublicKey("So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo")
 
 // import wallet adapter react ui css
 const LOOKUP_TABLE_ADDRESS = new PublicKey("37pFNGm75HgEZz32xezCZp945Fac4g3UkRFqSdWJ6N3n") // await createLookupTable()
-
+ 
 async function deriveInputs(base, wallet, seed, programId) {
   // Generate a new Keypair for the 'from' account (funding account)
   const fromPubkey = wallet;
@@ -354,8 +322,9 @@ pub struct Deposit<'info> {
 }
 */
 const [marginfi_pda, bump] = PublicKey.findProgramAddressSync(
-  [Buffer.from("jarezi")],
-  new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL')
+  [Buffer.from("jarezi"),
+  winwin.toBuffer()],
+    new PublicKey('Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d')
 );
 let marginfiAccount = new PublicKey("9mYyaKmfjJsaAAM6StZUy2JGg5vWTJjkNWfhuaxs4Ct2")
 let tx = new Transaction()
@@ -430,8 +399,9 @@ associatedTokenAccount = await connection.getAccountInfo(maybe);
       tx.add(ixx)
 
   }
+  let pdaAccount = await program.account.marginFiPda.fetch(marginfi_pda)
 maybe = await getAssociatedTokenAddress(
-  new PublicKey('5tR1kBz9gFxuZ5ZSRbchi96xhTerpSyRVwphUfBajC3L'),
+  pdaAccount.jareziMint,
   wallet.publicKey,
   true,
   TOKEN_2022_PROGRAM_ID
@@ -441,62 +411,47 @@ associatedTokenAccount = await connection.getAccountInfo(maybe);
     let ixx = await createAssociatedTokenAccountInstruction(wallet.publicKey,
       maybe,
       wallet.publicKey,
-      new PublicKey('5tR1kBz9gFxuZ5ZSRbchi96xhTerpSyRVwphUfBajC3L'),
+      pdaAccount.jareziMint,
       TOKEN_2022_PROGRAM_ID
       );
       tx.add(ixx)
   }
 
-if (tx.instructions.length > 0){
-  tx.feePayer = wallet.publicKey
-  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
-  let sig1 = await client.provider.sendAndConfirm(tx, [], {skipPreflight: false, commitment: 'confirmed'})
-  console.log(sig1);
-}
 let wsolPrice = client.getOraclePriceByBank(bank1.address);
 let bsolPrice = client.getOraclePriceByBank(bank2.address);
 let jitoPrice = client.getOraclePriceByBank(bank3.address);
 
-const derivedInputs = await deriveInputs(marginfi_pda, wallet.publicKey, "robot001", SystemProgram.programId)
+const derivedInputs = await deriveInputs(marginfi_pda, wallet.publicKey, pdaAccount.seededSeed, SystemProgram.programId)
 
 const market = await SolendMarket.initialize(connection, "production")
+console.log(market)
 let obligationAddress
 let ixx 
 const reserve = market.reserves.find((r) => r.config.liquidityToken.mint == NATIVE_MINT.toBase58())
 const reservebsol = market.reserves.find((r) => r.config.liquidityToken.mint == mint2.toBase58())
-  obligationAddress = await deriveObligationAddressFromWalletAndSeed(
-    marginfi_pda,
-    new PublicKey(market.config.address)
-  )
+
+const {
+  seed2,
+  lamports,
+  space,
+} = {
+  lamports: 9938880,
+  space: 1300,
+  seed2: market.config.address.toString().slice(0, 32),
+}
+var derivedInputs2 = await deriveInputs(marginfi_pda, wallet.publicKey, seed2, SOLEND_PROGRAM_ID)
+obligationAddress = derivedInputs2.toPubkey
 
 console.log(obligationAddress.toBase58())
 
     await market.loadReserves()
     console.log(reserve.config)
 console.log(market)
-let obRefresh = await refreshObligationInstruction(
-  obligationAddress,
-  [],
-  [],
-  SOLEND_PROGRAM_ID,
-)
-let refresh = await refreshReserveInstruction (
-  new PublicKey(reserve.config.address),
-  SOLEND_PROGRAM_ID,
-  new PublicKey(reserve.config.pythOracle )
-)
-let refresh_bsol = await refreshReserveInstruction (
-  new PublicKey(reservebsol.config.address),
-  SOLEND_PROGRAM_ID,
-  new PublicKey(reservebsol.config.pythOracle )
-)
 const userCollateralAccountAddress = await getAssociatedTokenAddress(
   new PublicKey(reservebsol.config.collateralMintAddress),
   marginfi_pda,
   true
 );
-var instruction = solanaStakePool.StakePoolInstruction.depositSol(bsolPayload);
-  
 const userCollateralAccount = await connection.getAccountInfo(userCollateralAccountAddress);
 if (!userCollateralAccount) {
   ixx = await createAssociatedTokenAccountInstruction(wallet.publicKey,
@@ -508,24 +463,27 @@ if (!userCollateralAccount) {
     tx.add(ixx)
     tx.feePayer = wallet.publicKey
     tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
-    let sig1 = await client.provider.sendAndConfirm(tx, [], {skipPreflight: false, commitment: 'confirmed'})
+    let sig1 = await client.provider.sendAndConfirm(tx, [], {skipPreflight: true, commitment: 'confirmed'})
     console.log(sig1);
 }
 
 
 
+const [oracle, _bump] = PublicKey.findProgramAddressSync(
+  [Buffer.from("ORACLE_USDY_SEED")],
+  program.programId
+);
 console.log(wsolPrice.price.toNumber())
 console.log(
   new BN (amount * 10 ** 9 ),
  new BN( bsolPrice.price.toNumber() / wsolPrice.price.toNumber() * 10 ** 9),
   new BN(jitoPrice.price.toNumber() / wsolPrice.price.toNumber() * 10 ** 9))
   let ix = await program.methods.deposit(
-   new BN (amount * 10 ** 9 ),
-   new BN( bsolPrice.price.toNumber() / wsolPrice.price.toNumber() * 10 ** 9),
-    new BN(jitoPrice.price.toNumber() / wsolPrice.price.toNumber() * 10 ** 9))
+   new BN (amount * 10 ** 9 ))
    .accounts({
     signer: wallet.publicKey,
     marginfiPda : marginfi_pda,
+    winnerWinnerChickumDinner: pdaAccount.winnerWinnerChickumDinner,
     poolTokenReceiverAccount: await getAssociatedTokenAddress(
       mint2,
       marginfi_pda,
@@ -540,7 +498,6 @@ console.log(
     systemProgram: SystemProgram.programId,
     tokenProgram: TOKEN_PROGRAM_ID,
     marginfiBank: new PublicKey(reservebsol.config.address),
-    marginfiBankJito: new PublicKey(market.reserves.find((r) => r.config.liquidityToken.mint == mint3.toBase58()).config.address),
     liquidityVault: new PublicKey( reservebsol.config.liquidityAddress),
     marginfiBankWsol: new PublicKey(reserve.config.address),
     poolTokenReceiverAccountWsol: await getAssociatedTokenAddress(
@@ -562,9 +519,9 @@ console.log(
     ),
     stakePoolWithdrawAuthorityWsol: new PublicKey(reserve.config.liquidityFeeReceiverAddress),
     bankLiquidityVaultAuthorityWsol:  bsolPayload.withdrawAuthority,
-    jareziMint: new PublicKey('5tR1kBz9gFxuZ5ZSRbchi96xhTerpSyRVwphUfBajC3L'),
+    jareziMint: pdaAccount.jareziMint,
     jareziTokenAccount: await getAssociatedTokenAddress(
-      new PublicKey('5tR1kBz9gFxuZ5ZSRbchi96xhTerpSyRVwphUfBajC3L'),
+      pdaAccount.jareziMint,
       wallet.publicKey,
       true,
       TOKEN_2022_PROGRAM_ID
@@ -582,12 +539,13 @@ console.log(
     switchboardOracle: new PublicKey(reservebsol.config.switchboardOracle),
     pythOracle2: new PublicKey(reserve.config.pythOracle),
     switchboardOracle2: new PublicKey(reserve.config.switchboardOracle),
-    
+    marginfiBankJito: new PublicKey(reserve.config.address),
     clock: SYSVAR_CLOCK_PUBKEY,
     stakeHistory: SYSVAR_STAKE_HISTORY_PUBKEY,
     stakeProgram: STAKE_PROGRAM_ID,
 
     rent: SYSVAR_RENT_PUBKEY,
+    oracle 
   })
   
   .instruction();
@@ -620,7 +578,7 @@ const computeBudgetIx =await ComputeBudgetProgram.setComputeUnitLimit(
   const messageWithLookupTable = new TransactionMessage({
     payerKey: wallet.publicKey,
     recentBlockhash: latestBlockhash.blockhash,
-    instructions: [computeBudgetIx, ix]
+    instructions: [computeBudgetIx, ...tx.instructions, ix]
 }).compileToV0Message([lookupTable, lookupTable2]); // 👈 NOTE: We DO include the lookup table
 const transactionWithLookupTable = new VersionedTransaction(messageWithLookupTable);
 
@@ -847,8 +805,10 @@ pub struct Deposit<'info> {
 }
 */
 const [marginfi_pda, bump] = PublicKey.findProgramAddressSync(
-  [Buffer.from("jarezi")],
-  new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL')
+
+  [Buffer.from("jarezi"),
+  winwin.toBuffer()],
+    new PublicKey('Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d')
 );
 let marginfiAccount = new PublicKey("9mYyaKmfjJsaAAM6StZUy2JGg5vWTJjkNWfhuaxs4Ct2")
 let tx = new Transaction()
@@ -923,8 +883,9 @@ associatedTokenAccount = await connection.getAccountInfo(maybe);
       tx.add(ixx)
 
   }
+  let pdaAccount = await program.account.marginFiPda.fetch(marginfi_pda)
 maybe = await getAssociatedTokenAddress(
-  new PublicKey('5tR1kBz9gFxuZ5ZSRbchi96xhTerpSyRVwphUfBajC3L'),
+  pdaAccount.jareziMint,
   wallet.publicKey,
   true,
   TOKEN_2022_PROGRAM_ID
@@ -934,61 +895,46 @@ associatedTokenAccount = await connection.getAccountInfo(maybe);
     let ixx = await createAssociatedTokenAccountInstruction(wallet.publicKey,
       maybe,
       wallet.publicKey,
-      new PublicKey('5tR1kBz9gFxuZ5ZSRbchi96xhTerpSyRVwphUfBajC3L'),
+      pdaAccount.jareziMint,
       TOKEN_2022_PROGRAM_ID
       );
       tx.add(ixx)
   }
 
-if (tx.instructions.length > 0){
-  tx.feePayer = wallet.publicKey
-  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
-  let sig1 = await client.provider.sendAndConfirm(tx, [], {skipPreflight: false, commitment: 'confirmed'})
-  console.log(sig1);
-}
 let wsolPrice = client.getOraclePriceByBank(bank1.address);
 let bsolPrice = client.getOraclePriceByBank(bank2.address);
 let jitoPrice = client.getOraclePriceByBank(bank3.address);
 
-const derivedInputs = await deriveInputs(marginfi_pda, wallet.publicKey, "robot001", SystemProgram.programId)
+const derivedInputs = await deriveInputs(marginfi_pda, wallet.publicKey, pdaAccount.seededSeed, SystemProgram.programId)
 
 const market = await SolendMarket.initialize(connection, "production")
+console.log(market)
 let obligationAddress
 let ixx 
 const reserve = market.reserves.find((r) => r.config.liquidityToken.mint == NATIVE_MINT.toBase58())
 const reservebsol = market.reserves.find((r) => r.config.liquidityToken.mint == mint2.toBase58())
-  obligationAddress = await deriveObligationAddressFromWalletAndSeed(
-    marginfi_pda,
-    new PublicKey(market.config.address)
-  )
-
+ 
+const {
+  seed2,
+  lamports,
+  space,
+} = {
+  lamports: 9938880,
+  space: 1300,
+  seed2: market.config.address.toString().slice(0, 32),
+}
+var derivedInputs2 = await deriveInputs(marginfi_pda, wallet.publicKey, seed2, SOLEND_PROGRAM_ID)
+obligationAddress = derivedInputs2.toPubkey
 console.log(obligationAddress.toBase58())
 
     await market.loadReserves()
     console.log(reserve.config)
 console.log(market)
-let obRefresh = await refreshObligationInstruction(
-  obligationAddress,
-  [],
-  [],
-  SOLEND_PROGRAM_ID,
-)
-let refresh = await refreshReserveInstruction (
-  new PublicKey(reserve.config.address),
-  SOLEND_PROGRAM_ID,
-  new PublicKey(reserve.config.pythOracle )
-)
-let refresh_bsol = await refreshReserveInstruction (
-  new PublicKey(reservebsol.config.address),
-  SOLEND_PROGRAM_ID,
-  new PublicKey(reservebsol.config.pythOracle )
-)
 const userCollateralAccountAddress = await getAssociatedTokenAddress(
   new PublicKey(reservebsol.config.collateralMintAddress),
   marginfi_pda,
   true
 );
-var instruction = solanaStakePool.StakePoolInstruction.depositSol(bsolPayload);
   
 const userCollateralAccount = await connection.getAccountInfo(userCollateralAccountAddress);
 if (!userCollateralAccount) {
@@ -1001,24 +947,26 @@ if (!userCollateralAccount) {
     tx.add(ixx)
     tx.feePayer = wallet.publicKey
     tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
-    let sig1 = await client.provider.sendAndConfirm(tx, [], {skipPreflight: false, commitment: 'confirmed'})
+    let sig1 = await client.provider.sendAndConfirm(tx, [], {skipPreflight: true, commitment: 'confirmed'})
     console.log(sig1);
 }
 
 
-
+const [oracle, _bump] = PublicKey.findProgramAddressSync(
+  [Buffer.from("ORACLE_USDY_SEED")],
+  program.programId
+);
 console.log(wsolPrice.price.toNumber())
 console.log(
   new BN (amount * 10 ** 9 ),
- new BN( bsolPrice.price.toNumber() / wsolPrice.price.toNumber() * 10 ** 9),
-  new BN(jitoPrice.price.toNumber() / wsolPrice.price.toNumber() * 10 ** 9))
+ new BN( bsolPrice.priceRealtime.toNumber() / wsolPrice.priceRealtime.toNumber() * 10 ** 9),
+  new BN(jitoPrice.priceRealtime.toNumber() / wsolPrice.priceRealtime.toNumber() * 10 ** 9))
   let ix = await program.methods.withdraw(
-   new BN (amount * 10 ** 9 ),
-   new BN( bsolPrice.price.toNumber() / wsolPrice.price.toNumber() * 10 ** 9),
-    new BN(jitoPrice.price.toNumber() / wsolPrice.price.toNumber() * 10 ** 9))
+   new BN (amount * 10 ** 9 ))
    .accounts({
     signer: wallet.publicKey,
     marginfiPda : marginfi_pda,
+    winnerWinnerChickumDinner: pdaAccount.winnerWinnerChickumDinner,
     poolTokenReceiverAccount: await getAssociatedTokenAddress(
       mint2,
       marginfi_pda,
@@ -1033,7 +981,6 @@ console.log(
     systemProgram: SystemProgram.programId,
     tokenProgram: TOKEN_PROGRAM_ID,
     marginfiBank: new PublicKey(reservebsol.config.address),
-    marginfiBankJito: new PublicKey(market.reserves.find((r) => r.config.liquidityToken.mint == mint3.toBase58()).config.address),
     liquidityVault: new PublicKey( reservebsol.config.liquidityAddress),
     marginfiBankWsol: new PublicKey(reserve.config.address),
     poolTokenReceiverAccountWsol: await getAssociatedTokenAddress(
@@ -1055,9 +1002,9 @@ console.log(
     ),
     stakePoolWithdrawAuthorityWsol: new PublicKey(reserve.config.liquidityFeeReceiverAddress),
     bankLiquidityVaultAuthorityWsol:  bsolPayload.withdrawAuthority,
-    jareziMint: new PublicKey('5tR1kBz9gFxuZ5ZSRbchi96xhTerpSyRVwphUfBajC3L'),
+    jareziMint: pdaAccount.jareziMint,
     jareziTokenAccount: await getAssociatedTokenAddress(
-      new PublicKey('5tR1kBz9gFxuZ5ZSRbchi96xhTerpSyRVwphUfBajC3L'),
+      pdaAccount.jareziMint,
       wallet.publicKey,
       true,
       TOKEN_2022_PROGRAM_ID
@@ -1076,10 +1023,12 @@ console.log(
     pythOracle2: new PublicKey(reserve.config.pythOracle),
     switchboardOracle2: new PublicKey(reserve.config.switchboardOracle),
     
+    marginfiBankJito: new PublicKey(reserve.config.address),
     clock: SYSVAR_CLOCK_PUBKEY,
     stakeHistory: SYSVAR_STAKE_HISTORY_PUBKEY,
     stakeProgram: STAKE_PROGRAM_ID,
     rent: SYSVAR_RENT_PUBKEY,
+    oracle 
   })
   
   .instruction();
@@ -1112,7 +1061,7 @@ const computeBudgetIx =await ComputeBudgetProgram.setComputeUnitLimit(
   const messageWithLookupTable = new TransactionMessage({
     payerKey: wallet.publicKey,
     recentBlockhash: latestBlockhash.blockhash,
-    instructions: [computeBudgetIx, ix]
+    instructions: [computeBudgetIx, ...tx.instructions, ix]
 }).compileToV0Message([lookupTable, lookupTable2]); // 👈 NOTE: We DO include the lookup table
 const transactionWithLookupTable = new VersionedTransaction(messageWithLookupTable);
 
@@ -1135,6 +1084,14 @@ function SolanaComponent() {
   const [amount, setAmount] = useState(1);
   const [program, setProgram] = useState();
   const [provider, setProvider] = useState();
+  const [seed, setSeed] = useState('@staccoverflow');
+  const [winnerWinnerChickumDinner, setWinnerWinnerChickumDinner] = useState(winwin);
+  const [kickback, setKickback] = useState(100);
+const [foldedOut, setFoldedOut] = useState(false);
+const handleFoldout = () => {
+  setFoldedOut(!foldedOut)
+}
+
   // Implement the handleYield and handleUnyield functions
   // These functions will use the wallet to send transactions
   const connection = new Connection("https://jarrett-solana-7ba9.mainnet.rpcpool.com/8d890735-edf2-4a75-af84-92f7c9e31718");
@@ -1149,7 +1106,10 @@ function SolanaComponent() {
       setOutput('Error in Yield');
     }
   };
-
+const handleInited = async () => {
+  console.log(seed, wallet, program, winnerWinnerChickumDinner, kickback)
+  initIt(seed, wallet, program, winnerWinnerChickumDinner, kickback)
+}
   const handleUnyield = async () => {
     let answer = await mainUy(connection, wallet, amount, program);
     setOutput(answer);
@@ -1164,114 +1124,266 @@ function SolanaComponent() {
       async function initIt(){
       const program = new Program(
         await Program.fetchIdl(
-          new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL'),
+          new PublicKey('Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d'),
           provider
         ),
 
-        new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL'),
+        new PublicKey('Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d'),
         provider
       )
           console.log(program)
       setProgram(program);
-/*
-      const market = await SolendMarket.initialize(connection, "production")
-      const [marginfi_pda, bump] = PublicKey.findProgramAddressSync(
-        [Buffer.from("jarezi")],
-        new PublicKey('GQQ5gDjd1vYKk257qJLJmrsTkiNZQZjC8btN5SHfhpNL')
-      );
-      createObligationAccount(
-        wallet.publicKey,
-        marginfi_pda,
-        new PublicKey(market.config.address),
-        program
-      )
-      
-      const derivedInputs = await deriveInputs(marginfi_pda, wallet.publicKey, "robot001", SystemProgram.programId)
-
-      console.log({
-        seed: derivedInputs.seed,
-        lamports: derivedInputs.lamports,
-        space: derivedInputs.space,
-      })
-    const config = await getConfig("production");
-
-    const client = await MarginfiClient.fetch(config, wallet, connection);
-      const jarezi_mint = Keypair.generate();
-    let marginfi_account = Keypair.generate();
-   let inited1 =  await program.methods.initMrgnFiPda(bump).accounts({
-      marginfiPda: marginfi_pda,
-      authority: wallet.publicKey,
-      marginfiAccount: marginfi_account.publicKey,
-      marginfiGroup: client.groupAddress,
-      marginfiProgram: new PublicKey('MFv2hWf31Z9kbCa1snEPYctwafyhdvnV7FZnsebVacA'),
-      jareziMint: jarezi_mint.publicKey,
-      tokenProgram2022: TOKEN_2022_PROGRAM_ID
-    }).signers([ jarezi_mint, marginfi_account ])
-    .instruction()
-
-      let createdSeeded = await program.methods.createSeededAccount(
-        {
-          seed: derivedInputs.seed,
-          lamports: new BN(derivedInputs.lamports),
-          space: new BN(derivedInputs.space),
-          bump: new BN(derivedInputs.bump),
-        }
-        )
-        .accounts({
-          program: marginfi_pda,
-          from: derivedInputs.fromPubkey,
-          to: derivedInputs.toPubkey,
-          base:  derivedInputs.base,
-          owner: derivedInputs.owner,
-          systemProgram: SystemProgram.programId,
-          lendingMarket: new PublicKey(market.config.address),
-          solendSdk: SOLEND_PROGRAM_ID,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          rent: SYSVAR_RENT_PUBKEY
-        })
-        .signers([ jarezi_mint, marginfi_account ])
-        .preInstructions([inited1])
-        .rpc({skipPreflight: true})
-     */
     }
     initIt()
     } else {
       setOutput('Disconnected');
     }
   }, [wallet.connected]);
-  async function initIt(){
-    /*
+  async function initIt(seed, wallet, program, winnerWinnerChickumDinner, kickback){
     
-#[derive(Accounts)]
-pub struct InitMrgnFiPda<'info> {
-    #[account(init,
-        seeds = [SEED_PREFIX],
+    const market = await SolendMarket.initialize(connection, "production")
+    console.log(market)
+    const [marginfi_pda, bump] = PublicKey.findProgramAddressSync(
+      [Buffer.from("jarezi"),
+      winnerWinnerChickumDinner.toBuffer()],
+      
+      new PublicKey('Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d')
+    );
+  const config = await getConfig("production");
 
-        bump,
-        payer = authority,
-        space = 8 + std::mem::size_of::<MarginFiPda>(),
-    )]
-    pub marginfi_pda: Account<'info, MarginFiPda>,
-    #[account(mut)]
-    pub authority: Signer<'info>,
-    pub system_program: Program<'info, System>,
-    /// CHECK: no validation, for educational purpose only
-    pub marginfi_account: AccountInfo<'info>,
-    /// CHECK: no validation, for educational purpose only
-    pub marginfi_group: AccountInfo<'info>,
-    /// CHECK: no validation, for educational purpose only
+  const {
+    seed2,
+    lamports,
+    space,
+  } = {
+    lamports: 9938880,
+    space: 1300,
+    seed2: market.config.address.toString().slice(0, 32),
+  }
 
-    pub marginfi_program: AccountInfo<'info>,
-    #[account(init,
-        payer = authority,
-        mint::authority = marginfi_pda,
-        mint::decimals = 9,
-        mint::token_program = token_program_2022,
-    )]
-    pub jarezi_mint: Box<Account<'info, Mint>>,
-    pub token_program_2022: Program<'info, Token>,
-*/
+  var derivedInputs = await deriveInputs(marginfi_pda, wallet.publicKey, seed2, SOLEND_PROGRAM_ID)
+  
+  const client = await MarginfiClient.fetch(config, wallet, connection);
+    const jarezi_mint = Keypair.generate();
+  try {
+
+    const bankLabel2 = "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1";
+    let mint2 = new PublicKey(bankLabel2);
+  var derivedInputs = await deriveInputs(marginfi_pda, wallet.publicKey, seed2, SOLEND_PROGRAM_ID)
+  const reservebsol = market.reserves.find((r) => r.config.liquidityToken.mint == mint2.toBase58())
+  const reserve = market.reserves.find((r) => r.config.liquidityToken.mint == NATIVE_MINT.toBase58())
+
+  const userCollateralAccountAddress = await getAssociatedTokenAddress(
+    new PublicKey(reservebsol.config.collateralMintAddress),
+    marginfi_pda,
+    true
+  );
+  const userCollateralAccountAddress2 = await getAssociatedTokenAddress(
+    new PublicKey(reserve.config.collateralMintAddress),
+    marginfi_pda,
+    true
+  );
+
+
+
+ let inited1 =  await program.methods.initMrgnFiPda(bump, new BN(kickback * 10_000), seed, seed2).accounts({
+    marginfiPda: marginfi_pda,
+    winnerWinnerChickumDinner: winnerWinnerChickumDinner,
+    authority: wallet.publicKey,
+    marginfiGroup: client.groupAddress,
+    marginfiProgram: new PublicKey('MFv2hWf31Z9kbCa1snEPYctwafyhdvnV7FZnsebVacA'),
+    jareziMint: jarezi_mint.publicKey,
+    tokenProgram2022: TOKEN_2022_PROGRAM_ID,
+
+  to: derivedInputs.toPubkey,
+  base:  derivedInputs.base,
+  owner: derivedInputs.owner,
+  systemProgram: SystemProgram.programId,
+  lendingMarket: new PublicKey(market.config.address),
+  solendSdk: SOLEND_PROGRAM_ID,
+  tokenProgram: TOKEN_PROGRAM_ID,
+  rent: SYSVAR_RENT_PUBKEY,
+    marginfiBankWsol: new PublicKey(reservebsol.config.address),
+    poolTokenReceiverAccountWsol: await getAssociatedTokenAddress(
+      mint2,
+      marginfi_pda,
+      true
+    ),
+    marginfiBankWsol2: new PublicKey(reserve.config.address),
+    liquidityVaultWsol:new PublicKey( reservebsol.config.liquidityAddress),
+    poolMintWsol: mint2,
+    stakePoolWithdrawAuthorityWsol: new PublicKey(reservebsol.config.liquidityFeeReceiverAddress),
+
+    stakePoolWithdrawAuthorityWsol2: new PublicKey(reserve.config.liquidityFeeReceiverAddress),
+    lendingMarketPubkey: new PublicKey(market.config.address),
+    lendingMarketAuthorityPubkey: new PublicKey(market.config.authorityAddress),
+    reserveCollateralMintPubkey:        new PublicKey(reservebsol.config.collateralMintAddress),
+    userCollateralPubkey: new PublicKey(reservebsol.config.collateralSupplyAddress),
+
+    destinationDepositCollateralPubkey: userCollateralAccountAddress,
+
+    reserveCollateralMintPubkey2:        new PublicKey(reserve.config.collateralMintAddress),
+    destinationDepositCollateralPubkey2: userCollateralAccountAddress2,
+
+
+    poolTokenReceiverAccountWsol2: await getAssociatedTokenAddress(
+      NATIVE_MINT,
+      marginfi_pda,
+      true
+    ),
+    liquidityVaultWsol2:new PublicKey( reserve.config.liquidityAddress),
+    poolMintWsol2: NATIVE_MINT,
+    pythOracle: new PublicKey(reservebsol.config.pythOracle),
+    switchboardOracle: new PublicKey(reservebsol.config.switchboardOracle),
+    pythOracle2: new PublicKey(reserve.config.pythOracle),
+    switchboardOracle2: new PublicKey(reserve.config.switchboardOracle),
+
+  })
+  .instruction()
+
+  var derivedInputs = await deriveInputs(marginfi_pda, wallet.publicKey, seed, SystemProgram.programId)
+
+  console.log({
+    seed: derivedInputs.seed,
+    lamports: derivedInputs.lamports,
+    space: derivedInputs.space,
+  })
+    let createdSeeded = await program.methods.createSeededAccount(
+      {
+        seed: derivedInputs.seed,
+        lamports: new BN(derivedInputs.lamports),
+        space: new BN(derivedInputs.space),
+        bump: new BN(derivedInputs.bump),
+      }
+      )
+      .accounts({
+        program: marginfi_pda,
+        winnerWinnerChickumDinner: winnerWinnerChickumDinner,
+        from: wallet.publicKey,
+        to: derivedInputs.toPubkey,
+        base:  derivedInputs.base,
+        owner: derivedInputs.owner,
+        systemProgram: SystemProgram.programId,
+        lendingMarket: new PublicKey(market.config.address),
+        solendSdk: SOLEND_PROGRAM_ID,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        rent: SYSVAR_RENT_PUBKEY
+      })
+      .instruction()
+      
+  let tx = new Transaction()
+  console.log(marginfi_pda.toBase58())
+  let ata = await getAssociatedTokenAddress(
+    NATIVE_MINT,
+    marginfi_pda,
+    true
+  )
+  let ataAccount = await connection.getAccountInfo(ata);
+  tx = new Transaction()
+  tx.add(createAssociatedTokenAccountInstruction(
+    wallet.publicKey,
+    userCollateralAccountAddress2,
+    marginfi_pda,
+    new PublicKey(reserve.config.collateralMintAddress)  ),
+    createAssociatedTokenAccountInstruction(
+      wallet.publicKey,
+      await getAssociatedTokenAddress(
+        NATIVE_MINT,
+        marginfi_pda,
+        true
+      ),
+      marginfi_pda,
+      NATIVE_MINT
+    ),
+    SystemProgram.transfer({
+      fromPubkey: wallet.publicKey,
+      toPubkey: await getAssociatedTokenAddress(
+        NATIVE_MINT,
+        marginfi_pda,
+        true
+      ),
+      lamports: 6660,
+    }))
+  tx.feePayer = wallet.publicKey
+  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
+  try {
+    await provider.sendAndConfirm(tx, [], {skipPreflight: true, commitment: 'confirmed'})
     }
+    catch (err){
+      console.log(err)
+    }
+      tx = new Transaction()
+  //tx.add()
+  tx.feePayer = wallet.publicKey
+  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
+  try {
+  await provider.sendAndConfirm(tx, [], {skipPreflight: true, commitment: 'confirmed'})
+  }
+  catch (err){
+    console.log(err)
+  }
+  
+let lookupTable = (await connection.getAddressLookupTable(LOOKUP_TABLE_ADDRESS)).value;
+let lookupTable2 = (await connection.getAddressLookupTable(new PublicKey(market.config.lookupTableAddress))).value;
+let latestBlockhash = await connection.getLatestBlockhash();
+
+const computeBudgetIx =await ComputeBudgetProgram.setComputeUnitLimit(
+  {
+    units: 100000000,
+  })
+  try {
+  const messageWithLookupTable = new TransactionMessage({
+    payerKey: wallet.publicKey,
+    recentBlockhash: latestBlockhash.blockhash,
+    instructions: [createAssociatedTokenAccountInstruction(
+      wallet.publicKey,
+      userCollateralAccountAddress,
+      marginfi_pda,
+      new PublicKey(reservebsol.config.collateralMintAddress)  ),
+      createAssociatedTokenAccountInstruction(
+        wallet.publicKey,
+        await getAssociatedTokenAddress(
+          mint2,
+          marginfi_pda,
+          true
+        ),
+        marginfi_pda,
+        mint2
+      ),
+      createTransferCheckedInstruction(
+        await getAssociatedTokenAddress(
+          mint2,
+          wallet.publicKey,
+        ),
+        mint2, 
+        await getAssociatedTokenAddress(
+          mint2,
+          marginfi_pda,true
+        ),
+        wallet.publicKey,
+        666,
+        9
+      ),computeBudgetIx, inited1, createdSeeded]
+}).compileToV0Message([lookupTable, lookupTable2]); // 👈 NOTE: We DO include the lookup table
+const transactionWithLookupTable = new VersionedTransaction(messageWithLookupTable);
+
+  const sigs = await client.provider.sendAndConfirm(transactionWithLookupTable, [jarezi_mint], {
+    skipPreflight: true, commitment: 'recent'})
+
+console.log(sigs)
+} catch (err){
+  console.log(err)
+  return 'uhoh'
+}
+      }
+     catch (err){
+      console.log(err)
+      console.log('already initialized... skipping')
+     }
+
+    return 'Init successful'
+  }
+
   return (
     <div>
   {wallet.connected ? (
@@ -1305,6 +1417,53 @@ pub struct InitMrgnFiPda<'info> {
         </div>
       </div>      <WalletMultiButton /> 
 
+      <button 
+          className="retro-button" onClick={handleFoldout}>Wanna manage your own magick yielding treasury?</button>
+
+      {foldedOut && 
+    <div className="container connected-container">
+      <div className="yield-section">
+        <p>Your own unique seed for your LST Staccer Machine:</p><br/>
+        <input
+          type="text"
+          value={seed}
+          maxLength={32}
+          onChange={(e) => setSeed(e.target.value)}
+        />
+
+<p >Proceeds from your LST Staccer Machine go to the address - recommend a https://docs.metaplex.com/programs/hydra/quick-start Hydra Fanout Wallet:</p><br/>
+        <input
+          type="text"
+          value={winnerWinnerChickumDinner}
+          onChange={(e) => setWinnerWinnerChickumDinner(new PublicKey(e.target.value))}
+        />
+
+<p>The amount of yield from your LST Staccer to automagically kickback to the deposit00rs:</p><br/>
+        <input
+          type="number"
+          value={kickback}
+          onChange={(e) => setKickback(e.target.value)}
+        />
+        <br />
+        <br />
+        <button 
+          className="retro-button" onClick={handleInited}>Init</button>
+      </div><ul>
+    <li>Experience DeFi innovation with our One-Click MegaYield Button. Stake to bSOL, borrow SOL, then stake to jitoSOL, compounding your yield efficiently and effortlessly.</li>
+    <li>Revolutionize your staking strategy: Stake to bSOL, borrow SOL, and then stake to jitoSOL for maximized and compounded returns.</li>
+    <li>Introducing a new era of fundraising: Stake to bSOL, borrow SOL, stake to jitoSOL, and issue tokens based on jitoSOL held, all without risking investor capital.</li>
+    <li>Transform your approach to yield farming: Stake to bSOL, borrow SOL, stake to jitoSOL, and enjoy the benefits of a simplified, yet powerful, yield strategy.</li>
+    <li>Unlock the full potential of your assets. Stake to bSOL, borrow SOL, then stake to jitoSOL, simplifying your investment and maximizing returns.</li>
+    <li>Empower your projects with our innovative fundraising model. Stake to bSOL, borrow SOL, stake to jitoSOL, and issue tokens, ensuring safety for your supporters' investments.</li>
+    <li>Step into the future of yield farming with our method that focuses on SOL, offering a streamlined and profitable staking experience.</li>
+    <li>Embrace the new wave of risk-free fundraising. Stake to bSOL, borrow SOL, stake to jitoSOL, and issue tokens, keeping investor funds secure and growing.</li>
+    <li>Take control of your DeFi journey. Stake to bSOL, borrow SOL, stake to jitoSOL, and issue tokens for a direct path to higher returns.</li>
+    <li>One-Click MegaYield: A simple yet powerful tool for DeFi, enabling you to stake to bSOL, borrow SOL, and stake to jitoSOL for optimal returns.</li>
+    <li>Build a sustainable support system for your projects. Stake to bSOL, borrow SOL, stake to jitoSOL, and issue tokens, all while ensuring zero risk to your supporters.</li>
+    <li>Our platform redefines yield farming: Stake to bSOL, borrow SOL, stake to jitoSOL, and issue tokens, making earning on your crypto easy and efficient.</li>
+</ul>
+</div>
+        }
     </div>
   ) : (
     <div className="container disconnected-container">
@@ -1323,7 +1482,6 @@ pub struct InitMrgnFiPda<'info> {
         <li>Unyield unstakes jitosol, repays sol, unstakes jitosol.</li>
         <li>It's a one click megayield button. ATOW bsol yield is 6.471% and jitosol, which you re-stake 76% of, is 6.969%. You will yield 1 * 6.471% + 0.74 * 6.969% = 11.76744% per $ deposited.</li>
       </ul>
-     
     </div>
   )}
 </div>

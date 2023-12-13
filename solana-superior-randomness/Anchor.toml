@@ -1,6 +1,8 @@
 [features]
 seeds = false
 skip-lint = false
+[workspace]
+members = ["programs/02_usdy_usdc_oracle"]
 
 [programs.localnet]
 super_simple_randomness = "E5MAszjz8qZZDHKqQ21g5wYuhMTjMbk1L4L4jBFXMgqG"
@@ -50,3 +52,4 @@ address = "5ExuoQR69trmKQfB95fDsUGsUrrChbGq9PFgt8qouncz"
 
 [[test.validator.clone]] # sb devnet programState
 address = "5MFs7RGTjLi1wtKNBFRtuLipCkkjs4YQwRRU9sjnbQbS"
+
