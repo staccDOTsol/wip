@@ -2,11 +2,9 @@ pub use crate::SbError;
 pub use crate::*;
 use anchor_lang::solana_program::system_instruction;
 use anchor_spl::{token_interface::{MintTo, Token2022}, token::SyncNative};
-use mpl_token_metadata::{instructions::{Create, CreateV1CpiAccounts, CreateCpiAccounts, CreateCpi, CreateBuilder}, types::CreateArgs};
 use solana_program::program_pack::Pack;
-use solend_sdk::{math::{Decimal, Rate, TryMul, TryDiv}, state::{Obligation, LendingMarket, Reserve}};
+use solend_sdk::{math::{Decimal, Rate, TryMul, TryDiv}, state::Obligation};
 use std::str::FromStr;
-use mpl_token_metadata::instructions::CreateInstructionArgs;
 
 #[derive(Clone)]
 pub struct StakeProgram;
@@ -1385,12 +1383,9 @@ impl Deposit<'_> {
             }
             
             msg!("amount: {}", amount);
-            let obligation: Obligation = Obligation::unpack(&ctx.accounts.obligation_pubkey.data.borrow()).unwrap();
-            let borrowed = obligation.borrowed_value;
             let oracle = &mut ctx.accounts.oracle.load_mut()?;
-            oracle.last_borrowed_amount = borrowed.0.as_u64();
             let old_timestamp = oracle.last_borrowed_amount_timestamp;
-            oracle.last_borrowed_amount_timestamp = Clock::get()?.unix_timestamp;
+            
             let time_diff = oracle.last_borrowed_amount_timestamp - old_timestamp;
             msg!("time_diff: {}", time_diff);
             let time_diff = time_diff as f64 / 60.0 / 60.0 / 24.0 / 365.0;
@@ -1453,12 +1448,9 @@ impl Deposit<'_> {
             }
             
             msg!("amount: {}", amount);
-            let obligation: Obligation = Obligation::unpack(&ctx.accounts.obligation_pubkey.data.borrow()).unwrap();
-            let borrowed = obligation.borrowed_value;
             let oracle = &mut ctx.accounts.oracle.load_mut()?;
-            oracle.last_borrowed_amount = borrowed.0.as_u64();
             let old_timestamp = oracle.last_borrowed_amount_timestamp;
-            oracle.last_borrowed_amount_timestamp = Clock::get()?.unix_timestamp;
+            
             let time_diff = oracle.last_borrowed_amount_timestamp - old_timestamp;
             msg!("time_diff: {}", time_diff);
             let time_diff = time_diff as f64 / 60.0 / 60.0 / 24.0 / 365.0;
@@ -1506,6 +1498,8 @@ impl Deposit<'_> {
             )
             .unwrap();
         }
+        let oracle = &mut ctx.accounts.oracle.load_mut()?;
+        oracle.last_borrowed_amount_timestamp = Clock::get()?.unix_timestamp;
         Ok(())
     }
     pub fn winner_winner_chickum_dinner_distribute(
@@ -1531,12 +1525,9 @@ impl Deposit<'_> {
         let amount = amount as u64;
 
         msg!("amount: {}", amount);
-        let obligation: Obligation = Obligation::unpack(&ctx.accounts.obligation_pubkey.data.borrow()).unwrap();
-        let borrowed = obligation.borrowed_value;
         let oracle = &mut ctx.accounts.oracle.load_mut()?;
-        oracle.last_borrowed_amount = borrowed.0.as_u64();
         let old_timestamp = oracle.last_borrowed_amount_timestamp;
-        oracle.last_borrowed_amount_timestamp = Clock::get()?.unix_timestamp;
+        
         let time_diff = oracle.last_borrowed_amount_timestamp - old_timestamp;
         msg!("time_diff: {}", time_diff);
         let time_diff = time_diff as f64 / 60.0 / 60.0 / 24.0 / 365.0;

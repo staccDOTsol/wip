@@ -5,7 +5,7 @@ pub mod instructions;
 pub mod models;
 pub use models::*;
 
-pub const PROGRAM_SEED: &[u8] = b"USDY_USDC_ORACLE";
+pub const PROGRAM_SEED: &[u8] = b"USDY_USDC_ORACLE_V2";
 
 pub const ORACLE_SEED: &[u8] = b"ORACLE_USDY_SEED_V2";
 
