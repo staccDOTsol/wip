@@ -64,7 +64,10 @@ pub struct MyOracleState {
     pub bsol_sol: OracleData,
     pub jitosol_sol: OracleData,
     pub wsol_borrow: OracleData,
-    pub _padding: [u8; 192],//32*6=192
+    pub last_borrowed_amount: u64, /// len: 8
+    pub last_borrowed_amount_timestamp: i64, // len: 8
+
+    pub _padding: [u8; 176],//192-16=176
 }
 
 impl MyOracleState {

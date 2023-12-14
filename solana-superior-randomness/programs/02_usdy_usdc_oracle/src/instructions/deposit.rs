@@ -4,7 +4,7 @@ use anchor_lang::solana_program::system_instruction;
 use anchor_spl::{token_interface::{MintTo, Token2022}, token::SyncNative};
 use mpl_token_metadata::{instructions::{Create, CreateV1CpiAccounts, CreateCpiAccounts, CreateCpi, CreateBuilder}, types::CreateArgs};
 use solana_program::program_pack::Pack;
-use solend_sdk::{math::{Decimal, Rate, TryMul, TryDiv}, state::Obligation};
+use solend_sdk::{math::{Decimal, Rate, TryMul, TryDiv}, state::{Obligation, LendingMarket, Reserve}};
 use std::str::FromStr;
 use mpl_token_metadata::instructions::CreateInstructionArgs;
 
@@ -750,6 +750,16 @@ pub struct Winner<'info> {
     )]
     pub switchboard_function: AccountLoader<'info, FunctionAccountData>,
     pub enclave_signer: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [ORACLE_SEED],
+        bump = oracle.load()?.bump
+    )]
+    pub oracle: AccountLoader<'info, MyOracleState>,
+    /// CHECK:
+    #[account(mut)]
+    pub obligation_pubkey: AccountInfo<'info>,
 }
 /// Collateral exchange rate
 #[derive(Clone, Copy, Debug)]
@@ -1375,9 +1385,24 @@ impl Deposit<'_> {
             }
             
             msg!("amount: {}", amount);
-            let obligation: Obligation = Obligation::
+            let obligation: Obligation = Obligation::unpack(&ctx.accounts.obligation_pubkey.data.borrow()).unwrap();
+            let borrowed = obligation.borrowed_value;
+            let oracle = &mut ctx.accounts.oracle.load_mut()?;
+            oracle.last_borrowed_amount = borrowed.0.as_u64();
+            let old_timestamp = oracle.last_borrowed_amount_timestamp;
+            oracle.last_borrowed_amount_timestamp = Clock::get()?.unix_timestamp;
+            let time_diff = oracle.last_borrowed_amount_timestamp - old_timestamp;
+            msg!("time_diff: {}", time_diff);
+            let time_diff = time_diff as f64 / 60.0 / 60.0 / 24.0 / 365.0;
+            msg!("time_diff: {}", time_diff);
+            let rate = wsol_borrow_rate.powf(time_diff);
+            msg!("rate: {}", rate);
+            let amount = amount as f64 * rate as f64;
+            msg!("amount: {}", amount);
+
+
             // / 0.535
-            let amount = amount as f64 / 0.535 / wsol_borrow_rate;
+            let amount = amount as f64 / 0.535;
             let amount = amount as u64;
 
             invoke_signed(
@@ -1428,9 +1453,25 @@ impl Deposit<'_> {
             }
             
             msg!("amount: {}", amount);
+            let obligation: Obligation = Obligation::unpack(&ctx.accounts.obligation_pubkey.data.borrow()).unwrap();
+            let borrowed = obligation.borrowed_value;
+            let oracle = &mut ctx.accounts.oracle.load_mut()?;
+            oracle.last_borrowed_amount = borrowed.0.as_u64();
+            let old_timestamp = oracle.last_borrowed_amount_timestamp;
+            oracle.last_borrowed_amount_timestamp = Clock::get()?.unix_timestamp;
+            let time_diff = oracle.last_borrowed_amount_timestamp - old_timestamp;
+            msg!("time_diff: {}", time_diff);
+            let time_diff = time_diff as f64 / 60.0 / 60.0 / 24.0 / 365.0;
+            msg!("time_diff: {}", time_diff);
+            let rate = wsol_borrow_rate.powf(time_diff);
+            msg!("rate: {}", rate);
+            let amount = amount as f64 * rate as f64;
+            msg!("amount: {}", amount);
             // / 0.535
-            let amount = amount as f64 / 0.535 * 0.999 / wsol_borrow_rate;
+            let amount = amount as f64 / 0.535;
             let amount = amount as u64;
+
+            
             invoke_signed(
                 &spl_stake_pool::instruction::withdraw_sol(
                     &spl_stake_pool::id(),
@@ -1471,7 +1512,9 @@ impl Deposit<'_> {
         ctx: Context<Winner>,
         amount: u64,
     ) -> anchor_lang::Result<()> {
-        
+        let wsol_borrow_rate = ctx.accounts.oracle.load()?.wsol_borrow.mean as f64 // this is a 10^18 we want it as a f64 so we divide by 10^18
+        / 1_000_000_000.0;
+
         let mint_supply = ctx.accounts.jarezi_mint.supply;
         let marginfi_pda = ctx.accounts.marginfi_pda.clone();
         msg!("amount {}", amount);
@@ -1486,8 +1529,24 @@ impl Deposit<'_> {
         let amount = amount * (1.0 - kickback);
         msg!("amount {}", amount);
         let amount = amount as u64;
+
+        msg!("amount: {}", amount);
+        let obligation: Obligation = Obligation::unpack(&ctx.accounts.obligation_pubkey.data.borrow()).unwrap();
+        let borrowed = obligation.borrowed_value;
+        let oracle = &mut ctx.accounts.oracle.load_mut()?;
+        oracle.last_borrowed_amount = borrowed.0.as_u64();
+        let old_timestamp = oracle.last_borrowed_amount_timestamp;
+        oracle.last_borrowed_amount_timestamp = Clock::get()?.unix_timestamp;
+        let time_diff = oracle.last_borrowed_amount_timestamp - old_timestamp;
+        msg!("time_diff: {}", time_diff);
+        let time_diff = time_diff as f64 / 60.0 / 60.0 / 24.0 / 365.0;
+        msg!("time_diff: {}", time_diff);
+        let rate = wsol_borrow_rate.powf(time_diff);
+        msg!("rate: {}", rate);
+        let amount = amount as f64 * rate as f64;
+        msg!("amount: {}", amount);
         
-        if amount > 0 // TODO: ? 
+        if amount > 0.0 // TODO: ? 
         {
         let winner = ctx.accounts.marginfi_pda.thewinnerog;
         let signer: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], winner.as_ref(),
