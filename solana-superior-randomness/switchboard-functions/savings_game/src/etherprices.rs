@@ -133,7 +133,7 @@ impl EtherPrices {
         let params = RefreshOraclesParams { rows };
 
         let (program_state_pubkey, _state_bump) =
-            Pubkey::find_program_address(&[b"USDY_USDC_ORACLE"], &Pubkey::from_str("Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d").unwrap());
+            Pubkey::find_program_address(&[b"USDY_USDC_ORACLE_V2"], &Pubkey::from_str("Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d").unwrap());
 
         let (oracle_pubkey, _oracle_bump) =
             Pubkey::find_program_address(&[b"ORACLE_USDY_SEED_V2"], &Pubkey::from_str("Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d").unwrap());

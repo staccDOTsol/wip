@@ -1,0 +1,377 @@
+{
+  "version": "0.0.1",
+  "name": "svbonk",
+  "instructions": [
+    {
+      "name": "initializeContract",
+      "accounts": [
+        {
+          "name": "contract",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "version",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "updateContract",
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "contract",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "autoStartNextGame",
+          "type": "bool"
+        },
+        {
+          "name": "version",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "updateGame",
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "contract",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "gameIndex",
+          "type": "u32"
+        },
+        {
+          "name": "blocktimeEnd",
+          "type": "i64"
+        },
+        {
+          "name": "version",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "buy",
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "contract",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "gameUser",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "contractTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "buyerTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "instructionSysvarAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "raffle",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "gameIndex",
+          "type": "u32"
+        },
+        {
+          "name": "qty",
+          "type": "u32"
+        },
+        {
+          "name": "version",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "claim",
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "contract",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "gameUser",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "contractTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "claimTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "gameIndex",
+          "type": "u32"
+        },
+        {
+          "name": "version",
+          "type": "u8"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Contract",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "activeGameIndex",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "games",
+            "type": {
+              "vec": {
+                "defined": "Game"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "autoStartNextGame",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GameUser",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "gameIndex",
+            "type": "u32"
+          },
+          {
+            "name": "qty",
+            "type": "u32"
+          },
+          {
+            "name": "claimedAmount",
+            "type": "u64"
+          },
+          {
+            "name": "authority",
+            "type": "publicKey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "version",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "Game",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "winner",
+            "type": "publicKey"
+          },
+          {
+            "name": "keysPurchased",
+            "type": "u32"
+          },
+          {
+            "name": "revShareTotal",
+            "type": "u64"
+          },
+          {
+            "name": "winnerTotal",
+            "type": "u64"
+          },
+          {
+            "name": "blocktimeStart",
+            "type": "i64"
+          },
+          {
+            "name": "blocktimeEnd",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "GameNotActive",
+      "msg": "Game is not active"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidGameIndex",
+      "msg": "Invalid game index"
+    },
+    {
+      "code": 6002,
+      "name": "GameIsNotClaimable",
+      "msg": "Game is not claimable"
+    },
+    {
+      "code": 6003,
+      "name": "GameNotStarted",
+      "msg": "Game has not started"
+    },
+    {
+      "code": 6004,
+      "name": "GameNotEnded",
+      "msg": "Game not ended"
+    },
+    {
+      "code": 6005,
+      "name": "NoKeysPurchased",
+      "msg": "No keys purchased"
+    },
+    {
+      "code": 6006,
+      "name": "NoClaimableAmount",
+      "msg": "No claimable amount"
+    },
+    {
+      "code": 6007,
+      "name": "NotWinner",
+      "msg": "Sorry, You are not the winner"
+    },
+    {
+      "code": 6008,
+      "name": "GameIndexLessThanZero",
+      "msg": "Game index less than zero"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidRoyaltyAddy",
+      "msg": "Invalid royalty addy"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidRoyaltyLen",
+      "msg": "Invalid royalty length"
+    },
+    {
+      "code": 6011,
+      "name": "NegativeClaimableAmount",
+      "msg": "Negative claimable amount"
+    },
+    {
+      "code": 6012,
+      "name": "GameAutoStartOff",
+      "msg": "Game Auto Start is off"
+    }
+  ]
+}

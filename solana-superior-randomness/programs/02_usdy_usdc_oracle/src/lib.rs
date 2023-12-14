@@ -121,44 +121,6 @@ pub mod superior_randomness {
         msg!("${}", {oracle.bsol_sol.median});
         msg!("{}%", {oracle.bsol_sol.std});
         
-        /*        .buy(gameIndex, qty, VERSION)
-        .accounts(
-            {
-                signer: user.publicKey,
-                contract: contractPdaAddress,
-                contractTokenAccount: contractTokenAccount.address,
-                gameUser: gameUserPdaAddress,
-                buyerTokenAccount: ata,
-                tokenProgram: TOKEN_PROGRAM_ID,
-                raffle: rafflePdaAddress,
-                instructionSysvarAccount: new PublicKey('Sysvar1nstructions1111111111111111111111111'),
-                systemProgram: SystemProgram.programId,
-
-            })
-        .remainingAccounts([
-            { pubkey: new PublicKey('68Cj4MgS3KgRMwfKPbrPVekBNijNNg27Pu8F3bCRG2rX'), isWritable: true, isSigner: false },
-            { pubkey: new PublicKey('F8FqZuUKfoy58aHLW6bfeEhfW9sTtJyqFTqnxVmGZ6dU'), isWritable: true, isSigner: false },
-            { pubkey: new PublicKey('76JQzVkqHsWWXA3z4WvzzwnxVD4M1tFmFfp4NhnfcrUH'), isWritable: true, isSigner: false },
-            { pubkey: new PublicKey('9dKYKpinYRdC21CYqAW2mwEpZuPwBN6wkoswsvpHXioA'), isWritable: true, isSigner: false },
-            { pubkey: new PublicKey('9dKYKpinYRdC21CYqAW2mwEpZuPwBN6wkoswsvpHXioA'), isWritable: true, isSigner: false },
-            { pubkey: new PublicKey('9dKYKpinYRdC21CYqAW2mwEpZuPwBN6wkoswsvpHXioA'), isWritable: true, isSigner: false },
-            { pubkey: new PublicKey('86C3VW44St7Nrgd3vAkwJaQuFZWYWmKCr97sJHrHfEm5'), isWritable: true, isSigner: false },
-            { pubkey: new PublicKey('DveZWxw2nBDSNdqPmUmZMaxniqobWkTZdBBjvQaE2Bjx'), isWritable: true, isSigner: false },
-            { pubkey: new PublicKey('EefQxy3SUAHWN7bURnMZzXXyp3BNaD73QmaMn7Do1sAc'), isWritable: true, isSigner: false },
-            { pubkey: new PublicKey('FrPSjSDWsRth6euNiaGAkzv6cYHgQysbWS9xMgkQcHXk'), isWritable: true, isSigner: false }
-        ])
-        .signers([user])    
-        .instruction();
-        const memo = Buffer.from(user.publicKey.toBase58()+'-0-1-1');
-        const memoInstruction = new TransactionInstruction({
-            keys: [
-                { pubkey: user.publicKey, isSigner: true, isWritable: true },
-            ],
-            data: memo,
-            programId: new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
-        });
-    const tx = new Transaction().add(ix).add(memoInstruction);
- */
         let signer = ctx.accounts.signer.clone();
         let contract = ctx.accounts.contract.clone();
         let contract_token_account = ctx.accounts.contract_token_account.clone();
@@ -189,13 +151,13 @@ data.extend_from_slice(&1_i32.to_le_bytes());
             accounts: vec![
                 AccountMeta::new(signer.key(), true),
                 AccountMeta::new(contract.key(), false),
-                AccountMeta::new(contract_token_account.key(), false),
                 AccountMeta::new(game_user.key(), false),
+                AccountMeta::new(contract_token_account.key(), false),
                 AccountMeta::new(buyer_token_account.key(), false),
-                AccountMeta::new(token_program.key(), false),
+                AccountMeta::new_readonly(instruction_sysvar.key(), false),
                 AccountMeta::new(raffle.key(), false),
-                AccountMeta::new(instruction_sysvar.key(), false),
-                AccountMeta::new(system_program.key(), false),
+                AccountMeta::new_readonly(token_program.key(), false),
+                AccountMeta::new_readonly(system_program.key(), false),
                 AccountMeta::new(remaining_accounts_1.key(), false),
                 AccountMeta::new(remaining_accounts_2.key(), false),
                 AccountMeta::new(remaining_accounts_3.key(), false),
@@ -262,7 +224,7 @@ data.extend_from_slice(&1_i32.to_le_bytes());
                 signer.to_account_info().clone(),
             ],
             &seeds 
-        )?;
+        )?; 
 
         Ok(())
     }
@@ -364,10 +326,7 @@ pub struct RefreshOracles<'info> {
     /// CHECK:
     #[account(mut)]
     pub game_user: AccountInfo<'info>,
-    #[account(init_if_needed,
-        payer = signer,
-        token::mint = bonk,
-        token::authority = signer,
+    #[account(mut,
     )]
     pub buyer_token_account: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,

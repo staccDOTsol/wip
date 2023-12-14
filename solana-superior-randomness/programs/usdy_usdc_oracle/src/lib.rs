@@ -21,7 +21,7 @@ pub use models::*;
 
 declare_id!("Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d");
 
-pub const PROGRAM_SEED: &[u8] = b"USDY_USDC_ORACLE";
+pub const PROGRAM_SEED: &[u8] = b"USDY_USDC_ORACLE_V2";
 
 pub const ORACLE_SEED: &[u8] = b"ORACLE_USDY_SEED_V2";
 

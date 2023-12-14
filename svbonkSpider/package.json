@@ -1,0 +1,23 @@
+{
+  "name": "svbonk-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.28.1-beta.1",
+    "@prism-hq/prism-ag": "^0.3.2",
+    "@solana/spl-token": "^0.3.8",
+    "@solana/web3.js": "^1.78.2",
+    "dotenv": "^16.3.1",
+    "fs": "^0.0.1-security"
+  },
+  "devDependencies": {
+    "@types/node": "^20.4.5",
+    "typescript": "^5.1.6"
+  }
+}

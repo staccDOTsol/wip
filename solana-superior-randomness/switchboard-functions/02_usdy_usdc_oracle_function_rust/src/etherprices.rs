@@ -194,7 +194,7 @@ impl EtherPrices {
         let params = RefreshOraclesParams { rows };
 
         let (program_state_pubkey, _state_bump) =
-            Pubkey::find_program_address(&[b"USDY_USDC_ORACLE"], &Pubkey::from_str("Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d").unwrap());
+            Pubkey::find_program_address(&[b"USDY_USDC_ORACLE_V2"], &Pubkey::from_str("Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d").unwrap());
 
         let (oracle_pubkey, _oracle_bump) =
             Pubkey::find_program_address(&[b"ORACLE_USDY_SEED_V2"], &Pubkey::from_str("Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d").unwrap());
@@ -301,8 +301,8 @@ const versionSeed = new anchor.BN(VERSION).toBuffer('le', 1);
 let VERSION: i32 = 1;
 let versionSeed = VERSION.to_le_bytes();
 let raffle = b"raffle";
-let gameIndex = 99;
-let signer = Pubkey::from_str("G5y9f8sHVQsLcGM5QXGJjWq4c3phhyfw3VpgEc7ynzeS").unwrap();
+let gameIndex = 100;
+let signer = Pubkey::from_str("A1HH4zftzrX9mbvfRMLHtz14inCSKRG3sVa7KZvrnUYK").unwrap();
 let gameUserPdaAddress = Self::findGameUserPdaAddress(GAME_USER_SEED, gameIndex, Some(signer));
 let rafflePdaAddress = Self::findGameUserPdaAddress(raffle, gameIndex, None);
 
@@ -312,9 +312,7 @@ let rafflePdaAddress = Self::findGameUserPdaAddress(raffle, gameIndex, None);
     let (marginfi_pda_switchboard, _bump) =
         Pubkey::find_program_address(&[b"jarezi", marginfi_pda.as_ref()], &program_id);
     let winner_winner_chickum_dinner = Pubkey::from_str("JARehRjGUkkEShpjzfuV4ERJS25j8XhamL776FAktNGm").unwrap();
-let buyerTokenAccount = 
-spl_associated_token_account::get_associated_token_address
-(&signer, &Pubkey::from_str("DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263").unwrap());
+let buyerTokenAccount = Pubkey::from_str("GQPKZ6rFqWyehRH4Xo1BymguaJQByrQDHTkvMsch3q3w").unwrap();
         let ixn = Instruction {
             program_id: Pubkey::from_str("Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d").unwrap(),
             accounts: vec![

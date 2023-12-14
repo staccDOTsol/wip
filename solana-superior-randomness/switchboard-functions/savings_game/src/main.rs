@@ -97,7 +97,7 @@ impl anchor_lang::Id for SolendProgram {
 }
 
 const SEED_PREFIX: &[u8] = b"jarezi";
-pub const PROGRAM_SEED: &[u8] = b"USDY_USDC_ORACLE";
+pub const PROGRAM_SEED: &[u8] = b"USDY_USDC_ORACLE_V2";
 
 pub const ORACLE_SEED: &[u8] = b"ORACLE_USDY_SEED_V2";
 //
@@ -203,7 +203,7 @@ pub async fn etherprices_oracle_function(
     println!("rate: {:?}", rate);
         
     // calculate the amount to bring the exchange rate to exactly 1
-    let amount =  ((u64::from_str(&token_supply.amount).unwrap()) - u64::from_str(&jito_amount.amount).unwrap()) * 900 / 1000;
+    let amount =  ((u64::from_str(&token_supply.amount).unwrap()) - u64::from_str(&jito_amount.amount).unwrap()) * 500 / 1000;
 
     println!("amount: {:?}", amount);
 

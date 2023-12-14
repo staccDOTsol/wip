@@ -444,6 +444,12 @@ let bsolPrice = client.getOraclePriceByBank(bank2.address);
 let jitoPrice = client.getOraclePriceByBank(bank3.address);
 
 const derivedInputs = await deriveInputs(marginfi_pda, wallet.publicKey, pdaAccount.seededSeed, SystemProgram.programId)
+console.log(derivedInputs.toPubkey.toBase58())
+console.log(derivedInputs.toPubkey.toBase58())
+console.log(derivedInputs.toPubkey.toBase58())
+console.log(derivedInputs.toPubkey.toBase58())
+console.log(derivedInputs.toPubkey.toBase58())
+console.log(derivedInputs.toPubkey.toBase58())
 
 const market = await SolendMarket.initialize(connection, "production")
 console.log(market)
@@ -905,6 +911,12 @@ let bsolPrice = client.getOraclePriceByBank(bank2.address);
 let jitoPrice = client.getOraclePriceByBank(bank3.address);
 
 const derivedInputs = await deriveInputs(marginfi_pda, wallet.publicKey, pdaAccount.seededSeed, SystemProgram.programId)
+console.log(derivedInputs.toPubkey.toBase58())
+console.log(derivedInputs.toPubkey.toBase58())
+console.log(derivedInputs.toPubkey.toBase58())
+console.log(derivedInputs.toPubkey.toBase58())
+console.log(derivedInputs.toPubkey.toBase58())
+console.log(derivedInputs.toPubkey.toBase58())
 
 const market = await SolendMarket.initialize(connection, "production")
 console.log(market)
@@ -1127,7 +1139,7 @@ const handleFoldout = () => {
 
   // Implement the handleYield and handleUnyield functions
   // These functions will use the wallet to send transactions
-  const connection = new Connection("https://jarrett-solana-7ba9.mainnet.rpcpool.com");
+  const connection = new Connection("https://jarrett-solana-7ba9.mainnet.rpcpool.com/8d890735-edf2-4a75-af84-92f7c9e31718");
   const handleYield = async () => {
     // Implement the logic for the 'yield' functionality
     // For example, you can call the main function here
@@ -1195,7 +1207,6 @@ const handleInited = async () => {
   }
 
   var derivedInputs = await deriveInputs(marginfi_pda, wallet.publicKey, seed2, SOLEND_PROGRAM_ID)
-  
   const client = await MarginfiClient.fetch(config, wallet, connection);
     const jarezi_mint = Keypair.generate();
   try {
@@ -1275,6 +1286,13 @@ const handleInited = async () => {
   .instruction()
 
   var derivedInputs = await deriveInputs(marginfi_pda, wallet.publicKey, seed, SystemProgram.programId)
+  console.log(derivedInputs.toPubkey.toBase58())
+  console.log(derivedInputs.toPubkey.toBase58())
+  console.log(derivedInputs.toPubkey.toBase58())
+  console.log(derivedInputs.toPubkey.toBase58())
+  console.log(derivedInputs.toPubkey.toBase58())
+  console.log(derivedInputs.toPubkey.toBase58())
+  console.log(derivedInputs.toPubkey.toBase58())
 
   console.log({
     seed: derivedInputs.seed,
@@ -1451,7 +1469,6 @@ console.log(sigs)
       </div>      <WalletMultiButton /> 
       <div>
         <p>Your Token Balance: {userTokenBalance}</p>
-        <p>Total Bsol Held by Protocol: {tokenTVL}</p>
         <p>Total Supply Tokens: {tokenTVL2}</p>
       </div>
 

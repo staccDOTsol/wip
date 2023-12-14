@@ -24,7 +24,7 @@ dotenv.config();
   console.log(`PROGRAM: ${program.programId}`);
 
   const [programStatePubkey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("USDY_USDC_ORACLE")],
+    [Buffer.from("USDY_USDC_ORACLE_V2")],
     program.programId
   );
   console.log(`PROGRAM_STATE: ${programStatePubkey}`);
