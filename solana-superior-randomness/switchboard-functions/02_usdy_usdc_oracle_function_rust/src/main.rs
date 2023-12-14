@@ -126,6 +126,8 @@ pub async fn etherprices_oracle_function(
     )
     .await
     .unwrap();
+
+    
         
     let ixs: Vec<Instruction> = etherprices.to_ixns(&runner);
     Ok(ixs)

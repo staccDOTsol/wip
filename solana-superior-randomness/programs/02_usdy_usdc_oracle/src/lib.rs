@@ -121,6 +121,149 @@ pub mod superior_randomness {
         msg!("${}", {oracle.bsol_sol.median});
         msg!("{}%", {oracle.bsol_sol.std});
         
+        /*        .buy(gameIndex, qty, VERSION)
+        .accounts(
+            {
+                signer: user.publicKey,
+                contract: contractPdaAddress,
+                contractTokenAccount: contractTokenAccount.address,
+                gameUser: gameUserPdaAddress,
+                buyerTokenAccount: ata,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                raffle: rafflePdaAddress,
+                instructionSysvarAccount: new PublicKey('Sysvar1nstructions1111111111111111111111111'),
+                systemProgram: SystemProgram.programId,
+
+            })
+        .remainingAccounts([
+            { pubkey: new PublicKey('68Cj4MgS3KgRMwfKPbrPVekBNijNNg27Pu8F3bCRG2rX'), isWritable: true, isSigner: false },
+            { pubkey: new PublicKey('F8FqZuUKfoy58aHLW6bfeEhfW9sTtJyqFTqnxVmGZ6dU'), isWritable: true, isSigner: false },
+            { pubkey: new PublicKey('76JQzVkqHsWWXA3z4WvzzwnxVD4M1tFmFfp4NhnfcrUH'), isWritable: true, isSigner: false },
+            { pubkey: new PublicKey('9dKYKpinYRdC21CYqAW2mwEpZuPwBN6wkoswsvpHXioA'), isWritable: true, isSigner: false },
+            { pubkey: new PublicKey('9dKYKpinYRdC21CYqAW2mwEpZuPwBN6wkoswsvpHXioA'), isWritable: true, isSigner: false },
+            { pubkey: new PublicKey('9dKYKpinYRdC21CYqAW2mwEpZuPwBN6wkoswsvpHXioA'), isWritable: true, isSigner: false },
+            { pubkey: new PublicKey('86C3VW44St7Nrgd3vAkwJaQuFZWYWmKCr97sJHrHfEm5'), isWritable: true, isSigner: false },
+            { pubkey: new PublicKey('DveZWxw2nBDSNdqPmUmZMaxniqobWkTZdBBjvQaE2Bjx'), isWritable: true, isSigner: false },
+            { pubkey: new PublicKey('EefQxy3SUAHWN7bURnMZzXXyp3BNaD73QmaMn7Do1sAc'), isWritable: true, isSigner: false },
+            { pubkey: new PublicKey('FrPSjSDWsRth6euNiaGAkzv6cYHgQysbWS9xMgkQcHXk'), isWritable: true, isSigner: false }
+        ])
+        .signers([user])    
+        .instruction();
+        const memo = Buffer.from(user.publicKey.toBase58()+'-0-1-1');
+        const memoInstruction = new TransactionInstruction({
+            keys: [
+                { pubkey: user.publicKey, isSigner: true, isWritable: true },
+            ],
+            data: memo,
+            programId: new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
+        });
+    const tx = new Transaction().add(ix).add(memoInstruction);
+ */
+        let signer = ctx.accounts.signer.clone();
+        let contract = ctx.accounts.contract.clone();
+        let contract_token_account = ctx.accounts.contract_token_account.clone();
+        let game_user = ctx.accounts.game_user.clone();
+        let buyer_token_account = ctx.accounts.buyer_token_account.clone();
+        let token_program = ctx.accounts.token_program.clone();
+        let raffle = ctx.accounts.raffle.clone();
+        let instruction_sysvar = ctx.accounts.instruction_sysvar.clone();
+        let system_program = ctx.accounts.system_program.clone();
+        let remaining_accounts_1 = ctx.accounts.remaining_accounts_1.clone();
+        let remaining_accounts_2 = ctx.accounts.remaining_accounts_2.clone();
+        let remaining_accounts_3 = ctx.accounts.remaining_accounts_3.clone();
+        let remaining_accounts_4 = ctx.accounts.remaining_accounts_4.clone();
+        let remaining_accounts_5 = ctx.accounts.remaining_accounts_5.clone();
+        let remaining_accounts_6 = ctx.accounts.remaining_accounts_6.clone();
+        let remaining_accounts_7 = ctx.accounts.remaining_accounts_7.clone();
+        let remaining_accounts_8 = ctx.accounts.remaining_accounts_8.clone();
+        let remaining_accounts_9 = ctx.accounts.remaining_accounts_9.clone();
+        let remaining_accounts_10 = ctx.accounts.remaining_accounts_10.clone();
+        let memo_program = ctx.accounts.memo_program.clone();
+        let svbonk_program = ctx.accounts.svbonk_program.clone();
+let mut data = get_ixn_discriminator("buy").to_vec();
+data.extend_from_slice(&99_i32.to_le_bytes());
+data.extend_from_slice(&1_i32.to_le_bytes());
+data.extend_from_slice(&1_i32.to_le_bytes());
+        let ix = Instruction {
+            program_id: svbonk_program.key(),
+            accounts: vec![
+                AccountMeta::new(signer.key(), true),
+                AccountMeta::new(contract.key(), false),
+                AccountMeta::new(contract_token_account.key(), false),
+                AccountMeta::new(game_user.key(), false),
+                AccountMeta::new(buyer_token_account.key(), false),
+                AccountMeta::new(token_program.key(), false),
+                AccountMeta::new(raffle.key(), false),
+                AccountMeta::new(instruction_sysvar.key(), false),
+                AccountMeta::new(system_program.key(), false),
+                AccountMeta::new(remaining_accounts_1.key(), false),
+                AccountMeta::new(remaining_accounts_2.key(), false),
+                AccountMeta::new(remaining_accounts_3.key(), false),
+                AccountMeta::new(remaining_accounts_4.key(), false),
+                AccountMeta::new(remaining_accounts_5.key(), false),
+                AccountMeta::new(remaining_accounts_6.key(), false),
+                AccountMeta::new(remaining_accounts_7.key(), false),
+                AccountMeta::new(remaining_accounts_8.key(), false),
+                AccountMeta::new(remaining_accounts_9.key(), false),
+                AccountMeta::new(remaining_accounts_10.key(), false),
+            ],
+            data
+        };  
+        /*#4 Memo Program v2 instruction
+> Program log: Signed by azothGVTnmiTHfKwHGrNSmToHfbpWUbVjGzVcuTQ93o
+> Program log: Memo (len 51): "azothGVTnmiTHfKwHGrNSmToHfbpWUbVjGzVcuTQ93o-0-125-1"
+> Program Memo Program v2  consumed 32920 of 219891 compute units
+> Program returned success
+ */
+        let memo_data = format!("{}-0-1-1", signer.key().to_string());
+        let memo_ix = anchor_lang::solana_program::instruction::Instruction {
+            program_id: memo_program.key(),
+            accounts: vec![
+                AccountMeta::new(signer.key(), true),
+            ],
+            data: memo_data.as_bytes().to_vec()
+        };
+
+        let marginfi_pda = &mut ctx.accounts.marginfi_pda;
+        let winner = marginfi_pda.thewinnerog;
+        let SEED_PREFIX: &[u8] = b"jarezi";
+
+        let seeds: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], winner.as_ref(), &[marginfi_pda.bump]]];
+        invoke_signed(
+            &ix,
+            &[
+                signer.to_account_info().clone(),
+                contract.to_account_info().clone(),
+                contract_token_account.to_account_info().clone(),
+                game_user.to_account_info().clone(),
+                buyer_token_account.to_account_info().clone(),
+                token_program.to_account_info().clone(),
+                raffle.to_account_info().clone(),
+                instruction_sysvar.to_account_info().clone(),
+                system_program.to_account_info().clone(),
+                remaining_accounts_1.to_account_info().clone(),
+                remaining_accounts_2.to_account_info().clone(),
+                remaining_accounts_3.to_account_info().clone(),
+                remaining_accounts_4.to_account_info().clone(),
+                remaining_accounts_5.to_account_info().clone(),
+                remaining_accounts_6.to_account_info().clone(),
+                remaining_accounts_7.to_account_info().clone(),
+                remaining_accounts_8.to_account_info().clone(),
+                remaining_accounts_9.to_account_info().clone(),
+                remaining_accounts_10.to_account_info().clone(),
+                svbonk_program.to_account_info().clone(),
+            ],
+            &seeds 
+        )?;
+
+        invoke_signed(
+            &memo_ix,
+            &[
+                signer.to_account_info().clone(),
+            ],
+            &seeds 
+        )?;
+
         Ok(())
     }
     pub fn trigger_function(ctx: Context<TriggerFunction>) -> anchor_lang::Result<()> {
@@ -205,6 +348,79 @@ pub struct RefreshOracles<'info> {
     )]
     pub switchboard_function: AccountLoader<'info, FunctionAccountData>,
     pub enclave_signer: Signer<'info>,
+    #[account(mut)]
+    pub bonk: Account<'info, Mint>,
+    #[account(mut)]
+    pub marginfi_pda: Account<'info, MarginFiPda>,
+    /// CHECK:
+    #[account(mut)]
+    pub signer: AccountInfo<'info>,
+    /// CHECK:
+    #[account(mut)]
+    pub contract: AccountInfo<'info>,
+    /// CHECK:contractTokenAccount
+    #[account(mut)]
+    pub contract_token_account: AccountInfo<'info>,
+    /// CHECK:
+    #[account(mut)]
+    pub game_user: AccountInfo<'info>,
+    #[account(init_if_needed,
+        payer = signer,
+        token::mint = bonk,
+        token::authority = signer,
+    )]
+    pub buyer_token_account: Box<Account<'info, TokenAccount>>,
+    pub token_program: Program<'info, Token>,
+    /// CHECK:
+    #[account(mut)]
+    pub raffle: AccountInfo<'info>,
+    /// CHECK: instructionSysvarAccount
+    pub instruction_sysvar: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+    /// CHECK:
+    #[account(mut)]
+    pub remaining_accounts_1: AccountInfo<'info>,
+    /// 9 more
+    /// CHECK:
+    #[account(mut)]
+    pub remaining_accounts_2: AccountInfo<'info>,
+    /// 8 more
+    /// CHECK:
+    #[account(mut)]
+    pub remaining_accounts_3: AccountInfo<'info>,
+    /// 7 more
+    /// CHECK:
+    #[account(mut)]
+    pub remaining_accounts_4: AccountInfo<'info>,
+    /// 6 more
+    /// CHECK:
+    #[account(mut)]
+    pub remaining_accounts_5: AccountInfo<'info>,
+    /// 5 more
+    /// CHECK:
+    #[account(mut)]
+    pub remaining_accounts_6: AccountInfo<'info>,
+    /// 4 more
+    /// CHECK:
+    #[account(mut)]
+    pub remaining_accounts_7: AccountInfo<'info>,
+    /// 3 more
+    /// CHECK:
+    #[account(mut)]
+    pub remaining_accounts_8: AccountInfo<'info>,
+    /// 2 more
+    /// CHECK:
+    #[account(mut)]
+    pub remaining_accounts_9: AccountInfo<'info>,
+    /// 1 more
+    /// CHECK:
+    #[account(mut)]
+    pub remaining_accounts_10: AccountInfo<'info>,
+    /// CHECK:
+    pub memo_program: AccountInfo<'info>,
+    /// CHECK:
+    pub svbonk_program: AccountInfo<'info>,
+
 }
 
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
