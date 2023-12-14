@@ -10,7 +10,7 @@ import { MINT_SIZE,  TOKEN_2022_PROGRAM_ID, createTransferCheckedInstruction, ge
 import { WalletConnectButton, WalletDisconnectButton, WalletModalButton, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import * as solanaStakePool from '@solana/spl-stake-pool';
 import { Marinade, MarinadeConfig, Wallet } from '@marinade.finance/marinade-ts-sdk'
-
+import * as anchor from '@coral-xyz/anchor';
 import '@solana/wallet-adapter-react-ui/styles.css';
 import { MarinadeFinanceProgram } from '@marinade.finance/marinade-ts-sdk/dist/src/programs/marinade-finance-program';
 import { STAKE_PROGRAM_ID, SYSTEM_PROGRAM_ID } from '@marinade.finance/marinade-ts-sdk/dist/src/util';
@@ -498,7 +498,7 @@ if (!userCollateralAccount) {
 
 
 const [oracle, _bump] = PublicKey.findProgramAddressSync(
-  [Buffer.from("ORACLE_USDY_SEED_V2")],
+  [Buffer.from("ORACLE_USDY_SEED_V3")],
   program.programId
 );
 console.log(wsolPrice.price.toNumber())
@@ -964,7 +964,7 @@ if (!userCollateralAccount) {
 
 
 const [oracle, _bump] = PublicKey.findProgramAddressSync(
-  [Buffer.from("ORACLE_USDY_SEED_V2")],
+  [Buffer.from("ORACLE_USDY_SEED_V3")],
   program.programId
 );
 console.log(wsolPrice.price.toNumber())
@@ -1178,6 +1178,65 @@ const handleInited = async () => {
       )
           console.log(program)
       setProgram(program);
+      /*let balance = runner.client.get_minimum_balance_for_rent_exemption(51)?;
+      //LEN: 1 + 4 + 4 + 8 + 32 + 1 + 1 = 51
+      let create_ix = system_program::instruction::create_account(
+        &runner.signer,
+        &gameUserPdaAddress,
+        balance,
+        51,
+        &Pubkey::from_str("SVBzw5fZRY9iNRwy5JczFYni2X9aDqur6HhAP1CXX7T").unwrap(),
+    );*/
+    const findGameUserPdaAddress = (stringSeed, gameIndex, user) => {
+
+const VERSION = 1;
+let versionSeed = (new BN(VERSION))
+versionSeed = versionSeed
+
+      const gameUserSeed = Buffer.from(anchor.utils.bytes.utf8.encode(stringSeed));
+      let gameIndexSeed = new BN(gameIndex)
+      ///little endian 4
+      gameIndexSeed = gameIndexSeed
+      const userSeed = user != undefined ? user.toBuffer() : undefined
+      if (userSeed != undefined){
+          const [pda, bump] = anchor.web3.PublicKey.findProgramAddressSync(
+              [gameUserSeed, gameIndexSeed, userSeed, versionSeed], 
+              new PublicKey('SVBzw5fZRY9iNRwy5JczFYni2X9aDqur6HhAP1CXX7T'));
+          console.log(`Bump: `, bump);
+          console.log(`PDA: `, pda.toString());
+          return pda;
+      }
+      else {
+          const [pda, bump] = anchor.web3.PublicKey.findProgramAddressSync(
+              [gameUserSeed, gameIndexSeed, versionSeed], 
+              new PublicKey('SVBzw5fZRY9iNRwy5JczFYni2X9aDqur6HhAP1CXX7T'));
+          console.log(`Bump: `, bump);
+          console.log(`PDA: `, pda.toString());
+          return pda;
+      }
+  }
+  const [marginfi_pda, bump] = PublicKey.findProgramAddressSync(
+    [Buffer.from("jarezi"),
+    winnerWinnerChickumDinner.toBuffer()],
+    
+    new PublicKey('Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d')
+  );
+  const gameUserPda = findGameUserPdaAddress('gameuser', 100, marginfi_pda)
+  
+    let create_ix = SystemProgram.createAccount({
+      fromPubkey: wallet.publicKey,
+      newAccountPubkey: gameUserPda,
+      lamports: await provider.connection.getMinimumBalanceForRentExemption
+      (51),
+      space: 51,
+      programId: new PublicKey('SVBzw5fZRY9iNRwy5JczFYni2X9aDqur6HhAP1CXX7T'),
+    });
+    let tx = new Transaction()
+    tx.add(create_ix)
+    tx.feePayer = wallet.publicKey
+    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
+    let sig1 = await provider.sendAndConfirm(tx, [], {skipPreflight: true, commitment: 'confirmed'})
+
     }
     initIt()
     } else {
