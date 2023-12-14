@@ -14,7 +14,7 @@ use solana_program::{
     msg,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
-    pubkey::{Pubkey, PUBKEY_BYTES},
+    pubkey::{Pubkey, PUBKEY_BYTES}, serialize_utils::read_u8,
 };
 use std::str::FromStr;
 use std::{
@@ -36,7 +36,6 @@ pub const MAX_BONUS_PCT: u8 = 25;
 
 /// Maximum protocol liquidation fee in deca bps (1 deca bp = 10 bps)
 pub const MAX_PROTOCOL_LIQUIDATION_FEE_DECA_BPS: u8 = 50;
-#[anchor_lang::account(anchor_lang::zero_copy)]
 /// Lending market reserve state
 #[derive(Debug, Default, PartialEq)]
 pub struct Reserve {
@@ -1007,6 +1006,22 @@ pub enum ReserveType {
     /// this asset cannot be used as collateral and can only be borrowed in isolation
     Isolated = 1,
 }
+impl AnchorDeserialize for Reserve {
+    fn deserialize_reader<R: std::io::Read>(
+        reader: &mut R,
+    ) -> Result<Self, std::io::Error> {
+        Ok(Reserve {
+            version: 0,
+            last_update: LastUpdate::deserialize_reader(reader)?,
+            lending_market: Pubkey::deserialize_reader(reader)?,
+            liquidity: ReserveLiquidity::deserialize_reader(reader)?,
+            collateral: ReserveCollateral::deserialize_reader(reader)?,
+            config: ReserveConfig::deserialize_reader(reader)?,
+            rate_limiter: RateLimiter::deserialize_reader(reader)?,
+        })
+    }
+
+}
 impl AnchorDeserialize for ReserveType {
     fn deserialize_reader<R: std::io::Read>(
         _reader: &mut R,
@@ -1573,7 +1588,7 @@ mod test {
             };
 
             let mut packed = [0u8; Reserve::LEN];
-            Reserve::pack(reserve.clone(), &mut packed).unwrap();
+            Reserve::pack(reserve, &mut packed).unwrap();
             let unpacked = Reserve::unpack(&packed).unwrap();
             assert_eq!(reserve, unpacked);
         }

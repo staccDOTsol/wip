@@ -6,7 +6,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import {  AddressLookupTableProgram, ComputeBudgetInstruction, ComputeBudgetProgram, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey,  SYSVAR_CLOCK_PUBKEY,  SYSVAR_RENT_PUBKEY,  SYSVAR_STAKE_HISTORY_PUBKEY,  SystemProgram,  Transaction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 import { AccountType, getConfig, MarginfiClient} from "@mrgnlabs/marginfi-client-v2";
 import { NATIVE_MINT, TOKEN_PROGRAM_ID, createAssociatedTokenAccountInstruction, createInitializeAccountInstruction, createSyncNativeInstruction, shortenAddress, parseOracleSetup } from "@mrgnlabs/mrgn-common";
-import { ACCOUNT_SIZE, TOKEN_2022_PROGRAM_ID, createTransferCheckedInstruction, getAssociatedTokenAddress, getMinimumBalanceForRentExemptAccount, syncNative } from '@solana/spl-token'
+import { MINT_SIZE,  TOKEN_2022_PROGRAM_ID, createTransferCheckedInstruction, getAssociatedTokenAddress, getMinimumBalanceForRentExemptAccount, syncNative } from '@solana/spl-token'
 import { WalletConnectButton, WalletDisconnectButton, WalletModalButton, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import * as solanaStakePool from '@solana/spl-stake-pool';
 import { Marinade, MarinadeConfig, Wallet } from '@marinade.finance/marinade-ts-sdk'
@@ -16,6 +16,10 @@ import { MarinadeFinanceProgram } from '@marinade.finance/marinade-ts-sdk/dist/s
 import { STAKE_PROGRAM_ID, SYSTEM_PROGRAM_ID } from '@marinade.finance/marinade-ts-sdk/dist/src/util';
 import { AnchorProvider, Program } from '@coral-xyz/anchor';
 import { BN } from 'bn.js';
+import { set } from '@coral-xyz/anchor/dist/cjs/utils/features';
+const hydra =new PublicKey("2bxwkKqwzkvwUqj3xYs4Rpmo1ncPcA1TedAPzTXN1yHu")
+const hydraHostFeeAccount = new PublicKey("5WbQEkwrUUAxLeueYFzBP7y6qQgYXXrQxWrAQ32wPuAn")
+const hydraReferrer = new PublicKey("942fhtBTB6Xb66ZoJMTexVuXyVUfhYfGvUGGCxx9owiA")
 let winwin = new PublicKey('JARehRjGUkkEShpjzfuV4ERJS25j8XhamL776FAktNGm')
 async function deriveObligationAddressFromWalletAndSeed(
   walletAddress,
@@ -110,8 +114,41 @@ async function deriveInputs(base, wallet, seed, programId) {
       owner,
   };
 }
+
+async function getMintByAuthority(connection, marginfi_pda) {
+
+ //COption<Pubkey>, // sizeof // Pubkey
+  const filters = [
+    // Only get Mint accounts
+    {
+        dataSize: MINT_SIZE,
+    },
+    // Only get Mint accounts with the given Mint authority
+    {
+        memcmp: {
+            offset: 4,//size of u32 = 4
+            bytes: marginfi_pda.toBase58(),
+        },
+    },
+];
+
+  const encodedAccounts = await connection.getProgramAccounts(TOKEN_2022_PROGRAM_ID, {
+      filters,
+  });
+
+console.log(encodedAccounts)
+  const accounts = encodedAccounts.map(({ pubkey, account }) => {
+
+      return {
+          pubkey,
+      };
+  });
+
+  console.log(accounts);
+  return accounts[0].pubkey;
+}
+
 async function mainY(connection, wallet, amount, program) {
-  
 
   const config = await getConfig("production");
   const client = await MarginfiClient.fetch(config, wallet, connection);
@@ -174,23 +211,6 @@ let index1, index2
     ),
     poolMint: mint2,
     lamports: amount * 10 ** 9,
-  };
-  const jitoSolPayload = {
-    stakePool: new PublicKey("Jito4APyf642JPZPx3hGc6WWJ8zPKtRbRs4P815Awbb"),
-    withdrawAuthority: new PublicKey("6iQKfEyhr3bZMotVkW6beNZz5CPAkiwvgV2CTje9pVSS"),
-    reserveStake: new PublicKey("BgKUXdS29YcHCFrPm5M8oLHiTzZaMDjsebggjoaQ6KFL"),
-    fundingAccount: wallet.publicKey,
-    destinationPoolAccount: await getAssociatedTokenAddress(
-      mint3,
-      wallet.publicKey
-    ),
-    managerFeeAccount: new PublicKey("feeeFLLsam6xZJFc6UQFrHqkvVt4jfmVvi2BRLkUZ4i"),
-    referralPoolAccount:  await getAssociatedTokenAddress(
-      mint3,
-      new PublicKey("Gf3sbc5Jb62jH7WcTr3WSNGDQLk1w6wcKMZXKK1SC1E6")
-    ),
-    poolMint: mint3,
-    lamports: (amount * (1-0.008) * 0.74) * 10 ** 9,
   };
   let fundingAccountBalance = await connection.getBalance(fundingAccount)
   console.log(fundingAccountBalance)
@@ -277,33 +297,33 @@ pub struct Deposit<'info> {
     pub pool_mint_wsol: Box<Account<'info, Mint>>,
     #[account(mut)]
     /// CHECK: no validation, for educational purpose only
-    pub stake_pool_jitosol: AccountInfo<'info>,
+    pub stake_pool_bsol: AccountInfo<'info>,
     #[account(mut)]
     /// CHECK: no validation, for educational purpose only
-    pub stake_pool_withdraw_authority_jitosol: AccountInfo<'info>,
+    pub stake_pool_withdraw_authority_bsol: AccountInfo<'info>,
     #[account(mut)]
-    pub reserve_stake_account_jitosol: Box<Account<'info, TokenAccount>>,
+    pub reserve_stake_account_bsol: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
-    pub manager_fee_account_jitosol: Box<Account<'info, TokenAccount>>,
+    pub manager_fee_account_bsol: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
-    pub pool_mint_jitosol: Box<Account<'info, Mint>>,
+    pub pool_mint_bsol: Box<Account<'info, Mint>>,
     #[account(mut)]
     /// CHECK:
-    pub stake_pool_program_jitosol: AccountInfo<'info>,
+    pub stake_pool_program_bsol: AccountInfo<'info>,
     #[account(init_if_needed,
         payer = signer,
         token::authority = marginfi_pda,
-        token::mint = pool_mint_jitosol
+        token::mint = pool_mint_bsol
         
     )]
-    pub pool_token_receiver_account_jitosol: Box<Account<'info, TokenAccount>>,
+    pub pool_token_receiver_account_bsol: Box<Account<'info, TokenAccount>>,
     #[account(init_if_needed, token::authority = referrer,
-        token::mint = pool_mint_jitosol,
+        token::mint = pool_mint_bsol,
         payer = signer,
         
         
     )]
-    pub referrer_token_account_jitosol: Box<Account<'info, TokenAccount>>,
+    pub referrer_token_account_bsol: Box<Account<'info, TokenAccount>>,
     /// CHECK: Checked by CPI to Spl Stake Program
     pub stake_pool_withdraw_authority_wsol: AccountInfo<'info>,
     /// CHECK: Checked by CPI to Spl Stake Program
@@ -326,6 +346,8 @@ const [marginfi_pda, bump] = PublicKey.findProgramAddressSync(
   winwin.toBuffer()],
     new PublicKey('Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d')
 );
+
+let jareziMint = await  getMintByAuthority(connection, marginfi_pda);
 let marginfiAccount = new PublicKey("9mYyaKmfjJsaAAM6StZUy2JGg5vWTJjkNWfhuaxs4Ct2")
 let tx = new Transaction()
 let maybe = await getAssociatedTokenAddress(
@@ -401,7 +423,7 @@ associatedTokenAccount = await connection.getAccountInfo(maybe);
   }
   let pdaAccount = await program.account.marginFiPda.fetch(marginfi_pda)
 maybe = await getAssociatedTokenAddress(
-  pdaAccount.jareziMint,
+  jareziMint,
   wallet.publicKey,
   true,
   TOKEN_2022_PROGRAM_ID
@@ -411,7 +433,7 @@ associatedTokenAccount = await connection.getAccountInfo(maybe);
     let ixx = await createAssociatedTokenAccountInstruction(wallet.publicKey,
       maybe,
       wallet.publicKey,
-      pdaAccount.jareziMint,
+      jareziMint,
       TOKEN_2022_PROGRAM_ID
       );
       tx.add(ixx)
@@ -470,7 +492,7 @@ if (!userCollateralAccount) {
 
 
 const [oracle, _bump] = PublicKey.findProgramAddressSync(
-  [Buffer.from("ORACLE_USDY_SEED")],
+  [Buffer.from("ORACLE_USDY_SEED_V2")],
   program.programId
 );
 console.log(wsolPrice.price.toNumber())
@@ -507,21 +529,10 @@ console.log(
     ),
     liquidityVaultWsol:new PublicKey( reserve.config.liquidityAddress),
     poolMintWsol: mint1,
-    stakePoolJitosol: jitoSolPayload.stakePool,
-    stakePoolWithdrawAuthorityJitosol: jitoSolPayload.withdrawAuthority,
-    reserveStakeAccountJitosol: jitoSolPayload.reserveStake,
-    managerFeeAccountJitosol: jitoSolPayload.managerFeeAccount,
-    poolMintJitosol: jitoSolPayload.poolMint,
-    poolTokenReceiverAccountJitosol: await getAssociatedTokenAddress(
-      mint3,
-      marginfi_pda,
-      true
-    ),
     stakePoolWithdrawAuthorityWsol: new PublicKey(reserve.config.liquidityFeeReceiverAddress),
-    bankLiquidityVaultAuthorityWsol:  bsolPayload.withdrawAuthority,
-    jareziMint: pdaAccount.jareziMint,
+    jareziMint: jareziMint,
     jareziTokenAccount: await getAssociatedTokenAddress(
-      pdaAccount.jareziMint,
+      jareziMint,
       wallet.publicKey,
       true,
       TOKEN_2022_PROGRAM_ID
@@ -539,13 +550,16 @@ console.log(
     switchboardOracle: new PublicKey(reservebsol.config.switchboardOracle),
     pythOracle2: new PublicKey(reserve.config.pythOracle),
     switchboardOracle2: new PublicKey(reserve.config.switchboardOracle),
-    marginfiBankJito: new PublicKey(reserve.config.address),
     clock: SYSVAR_CLOCK_PUBKEY,
     stakeHistory: SYSVAR_STAKE_HISTORY_PUBKEY,
     stakeProgram: STAKE_PROGRAM_ID,
 
     rent: SYSVAR_RENT_PUBKEY,
-    oracle 
+    oracle,
+    hydra,
+    hydraReferrer,
+    hydraHostFeeAccount,
+    
   })
   
   .instruction();
@@ -658,23 +672,6 @@ let index1, index2
     poolMint: mint2,
     lamports: amount * 10 ** 9,
   };
-  const jitoSolPayload = {
-    stakePool: new PublicKey("Jito4APyf642JPZPx3hGc6WWJ8zPKtRbRs4P815Awbb"),
-    withdrawAuthority: new PublicKey("6iQKfEyhr3bZMotVkW6beNZz5CPAkiwvgV2CTje9pVSS"),
-    reserveStake: new PublicKey("BgKUXdS29YcHCFrPm5M8oLHiTzZaMDjsebggjoaQ6KFL"),
-    fundingAccount: wallet.publicKey,
-    destinationPoolAccount: await getAssociatedTokenAddress(
-      mint3,
-      wallet.publicKey
-    ),
-    managerFeeAccount: new PublicKey("feeeFLLsam6xZJFc6UQFrHqkvVt4jfmVvi2BRLkUZ4i"),
-    referralPoolAccount:  await getAssociatedTokenAddress(
-      mint3,
-      new PublicKey("Gf3sbc5Jb62jH7WcTr3WSNGDQLk1w6wcKMZXKK1SC1E6")
-    ),
-    poolMint: mint3,
-    lamports: (amount * (1-0.008) * 0.74) * 10 ** 9,
-  };
   let fundingAccountBalance = await connection.getBalance(fundingAccount)
   console.log(fundingAccountBalance)
 
@@ -760,33 +757,33 @@ pub struct Deposit<'info> {
     pub pool_mint_wsol: Box<Account<'info, Mint>>,
     #[account(mut)]
     /// CHECK: no validation, for educational purpose only
-    pub stake_pool_jitosol: AccountInfo<'info>,
+    pub stake_pool_bsol: AccountInfo<'info>,
     #[account(mut)]
     /// CHECK: no validation, for educational purpose only
-    pub stake_pool_withdraw_authority_jitosol: AccountInfo<'info>,
+    pub stake_pool_withdraw_authority_bsol: AccountInfo<'info>,
     #[account(mut)]
-    pub reserve_stake_account_jitosol: Box<Account<'info, TokenAccount>>,
+    pub reserve_stake_account_bsol: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
-    pub manager_fee_account_jitosol: Box<Account<'info, TokenAccount>>,
+    pub manager_fee_account_bsol: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
-    pub pool_mint_jitosol: Box<Account<'info, Mint>>,
+    pub pool_mint_bsol: Box<Account<'info, Mint>>,
     #[account(mut)]
     /// CHECK:
-    pub stake_pool_program_jitosol: AccountInfo<'info>,
+    pub stake_pool_program_bsol: AccountInfo<'info>,
     #[account(init_if_needed,
         payer = signer,
         token::authority = marginfi_pda,
-        token::mint = pool_mint_jitosol
+        token::mint = pool_mint_bsol
         
     )]
-    pub pool_token_receiver_account_jitosol: Box<Account<'info, TokenAccount>>,
+    pub pool_token_receiver_account_bsol: Box<Account<'info, TokenAccount>>,
     #[account(init_if_needed, token::authority = referrer,
-        token::mint = pool_mint_jitosol,
+        token::mint = pool_mint_bsol,
         payer = signer,
         
         
     )]
-    pub referrer_token_account_jitosol: Box<Account<'info, TokenAccount>>,
+    pub referrer_token_account_bsol: Box<Account<'info, TokenAccount>>,
     /// CHECK: Checked by CPI to Spl Stake Program
     pub stake_pool_withdraw_authority_wsol: AccountInfo<'info>,
     /// CHECK: Checked by CPI to Spl Stake Program
@@ -884,8 +881,10 @@ associatedTokenAccount = await connection.getAccountInfo(maybe);
 
   }
   let pdaAccount = await program.account.marginFiPda.fetch(marginfi_pda)
+
+let jareziMint = await  getMintByAuthority(connection, marginfi_pda);
 maybe = await getAssociatedTokenAddress(
-  pdaAccount.jareziMint,
+  jareziMint,
   wallet.publicKey,
   true,
   TOKEN_2022_PROGRAM_ID
@@ -895,7 +894,7 @@ associatedTokenAccount = await connection.getAccountInfo(maybe);
     let ixx = await createAssociatedTokenAccountInstruction(wallet.publicKey,
       maybe,
       wallet.publicKey,
-      pdaAccount.jareziMint,
+      jareziMint,
       TOKEN_2022_PROGRAM_ID
       );
       tx.add(ixx)
@@ -953,7 +952,7 @@ if (!userCollateralAccount) {
 
 
 const [oracle, _bump] = PublicKey.findProgramAddressSync(
-  [Buffer.from("ORACLE_USDY_SEED")],
+  [Buffer.from("ORACLE_USDY_SEED_V2")],
   program.programId
 );
 console.log(wsolPrice.price.toNumber())
@@ -990,21 +989,10 @@ console.log(
     ),
     liquidityVaultWsol:new PublicKey( reserve.config.liquidityAddress),
     poolMintWsol: mint1,
-    stakePoolJitosol: jitoSolPayload.stakePool,
-    stakePoolWithdrawAuthorityJitosol: jitoSolPayload.withdrawAuthority,
-    reserveStakeAccountJitosol: jitoSolPayload.reserveStake,
-    managerFeeAccountJitosol: jitoSolPayload.managerFeeAccount,
-    poolMintJitosol: jitoSolPayload.poolMint,
-    poolTokenReceiverAccountJitosol: await getAssociatedTokenAddress(
-      mint3,
-      marginfi_pda,
-      true
-    ),
     stakePoolWithdrawAuthorityWsol: new PublicKey(reserve.config.liquidityFeeReceiverAddress),
-    bankLiquidityVaultAuthorityWsol:  bsolPayload.withdrawAuthority,
-    jareziMint: pdaAccount.jareziMint,
+    jareziMint: jareziMint,
     jareziTokenAccount: await getAssociatedTokenAddress(
-      pdaAccount.jareziMint,
+      jareziMint,
       wallet.publicKey,
       true,
       TOKEN_2022_PROGRAM_ID
@@ -1023,12 +1011,15 @@ console.log(
     pythOracle2: new PublicKey(reserve.config.pythOracle),
     switchboardOracle2: new PublicKey(reserve.config.switchboardOracle),
     
-    marginfiBankJito: new PublicKey(reserve.config.address),
     clock: SYSVAR_CLOCK_PUBKEY,
     stakeHistory: SYSVAR_STAKE_HISTORY_PUBKEY,
     stakeProgram: STAKE_PROGRAM_ID,
     rent: SYSVAR_RENT_PUBKEY,
-    oracle 
+    oracle,
+    hydra,
+    hydraReferrer,
+    hydraHostFeeAccount,
+    
   })
   
   .instruction();
@@ -1037,17 +1028,6 @@ console.log(
   console.log(...bank1.config.oracleKeys)
 
   
-const depositBsolToReserve = await depositReserveLiquidityInstruction(
-  amount / Number(bsolPrice.price) * 10 ** 9,
-  bsolPayload.destinationPoolAccount,
-  new PublicKey(reservebsol.config.collateralSupplyAddress),
-  new PublicKey( reservebsol.config.address),
-  new PublicKey(reservebsol.config.liquidityAddress),
-  new PublicKey(reservebsol.config.collateralMintAddress),
-  new PublicKey(market.config.address),
-  new PublicKey(market.config.authorityAddress),
-wallet.publicKey,
-SOLEND_PROGRAM_ID);
 
 let lookupTable = (await connection.getAddressLookupTable(LOOKUP_TABLE_ADDRESS)).value;
 let lookupTable2 = (await connection.getAddressLookupTable(new PublicKey(market.config.lookupTableAddress))).value;
@@ -1088,13 +1068,66 @@ function SolanaComponent() {
   const [winnerWinnerChickumDinner, setWinnerWinnerChickumDinner] = useState(winwin);
   const [kickback, setKickback] = useState(100);
 const [foldedOut, setFoldedOut] = useState(false);
+
+const [userTokenBalance, setUserTokenBalance] = useState(0);
+const [tokenTVL, setTokenTVL] = useState(0);
+const [tokenTVL2, setTokenTVL2] = useState(0);
+
+
+const tokenMintAddress = 'GHQGAo8M5K5gry4qVMGGvWEGHvuvnNvtSMidkpFdhwR4';
+const tvlTokenAccount = 'E2iGSzRyerDwtaAzarEoMz5hapFiAgkceTfhvHxbqbd8';
+
+useEffect(() => {
+  const fetchBalances = async () => {
+    if (wallet.connected) {
+      // Fetch User's Token Balance
+      try {
+      const userTokenAccount = await getAssociatedTokenAddress(
+        new PublicKey(tokenMintAddress),
+        wallet.publicKey,
+        false,
+        TOKEN_2022_PROGRAM_ID
+      );
+      
+      const userTokenAccountInfo = await connection.getTokenAccountBalance(
+        userTokenAccount
+      );
+      if (userTokenAccountInfo) {
+        const userBalance = userTokenAccountInfo.value.uiAmount; // Replace with correct parsing
+        setUserTokenBalance(userBalance);
+      }
+      } 
+      catch (err){
+
+      }
+      const tokenBal = await connection.getTokenSupply(
+        new PublicKey(tokenMintAddress)
+      );
+      if (tokenBal) {
+        setTokenTVL2(tokenBal.value.uiAmount);
+      }
+      // Fetch TVL of Token Account
+      const tvlAccountInfo = await connection.getTokenAccountBalance(
+        new PublicKey(tvlTokenAccount)
+      );
+      if (tvlAccountInfo) {
+        const tvlBalance = tvlAccountInfo.value.uiAmount; // Replace with correct parsing
+       
+        setTokenTVL(tvlBalance);
+      }
+    }
+  };
+
+  fetchBalances();
+}, [wallet.connected]);
+
 const handleFoldout = () => {
   setFoldedOut(!foldedOut)
 }
 
   // Implement the handleYield and handleUnyield functions
   // These functions will use the wallet to send transactions
-  const connection = new Connection("https://jarrett-solana-7ba9.mainnet.rpcpool.com/8d890735-edf2-4a75-af84-92f7c9e31718");
+  const connection = new Connection("https://jarrett-solana-7ba9.mainnet.rpcpool.com");
   const handleYield = async () => {
     // Implement the logic for the 'yield' functionality
     // For example, you can call the main function here
@@ -1416,6 +1449,12 @@ console.log(sigs)
         <div>
         </div>
       </div>      <WalletMultiButton /> 
+      <div>
+        <p>Your Token Balance: {userTokenBalance}</p>
+        <p>Total Bsol Held by Protocol: {tokenTVL}</p>
+        <p>Total Supply Tokens: {tokenTVL2}</p>
+      </div>
+
 
       <button 
           className="retro-button" onClick={handleFoldout}>Wanna manage your own magick yielding treasury?</button>
@@ -1449,18 +1488,18 @@ console.log(sigs)
         <button 
           className="retro-button" onClick={handleInited}>Init</button>
       </div><ul>
-    <li>Experience DeFi innovation with our One-Click MegaYield Button. Stake to bSOL, borrow SOL, then stake to jitoSOL, compounding your yield efficiently and effortlessly.</li>
-    <li>Revolutionize your staking strategy: Stake to bSOL, borrow SOL, and then stake to jitoSOL for maximized and compounded returns.</li>
-    <li>Introducing a new era of fundraising: Stake to bSOL, borrow SOL, stake to jitoSOL, and issue tokens based on jitoSOL held, all without risking investor capital.</li>
-    <li>Transform your approach to yield farming: Stake to bSOL, borrow SOL, stake to jitoSOL, and enjoy the benefits of a simplified, yet powerful, yield strategy.</li>
-    <li>Unlock the full potential of your assets. Stake to bSOL, borrow SOL, then stake to jitoSOL, simplifying your investment and maximizing returns.</li>
-    <li>Empower your projects with our innovative fundraising model. Stake to bSOL, borrow SOL, stake to jitoSOL, and issue tokens, ensuring safety for your supporters' investments.</li>
+    <li>Experience DeFi innovation with our One-Click MegaYield Button. Stake to bSOL, borrow SOL, then stake to bSOL, compounding your yield efficiently and effortlessly.</li>
+    <li>Revolutionize your staking strategy: Stake to bSOL, borrow SOL, and then stake to bSOL for maximized and compounded returns.</li>
+    <li>Introducing a new era of fundraising: Stake to bSOL, borrow SOL, stake to bSOL, and issue tokens based on bSOL held, all without risking investor capital.</li>
+    <li>Transform your approach to yield farming: Stake to bSOL, borrow SOL, stake to bSOL, and enjoy the benefits of a simplified, yet powerful, yield strategy.</li>
+    <li>Unlock the full potential of your assets. Stake to bSOL, borrow SOL, then stake to bSOL, simplifying your investment and maximizing returns.</li>
+    <li>Empower your projects with our innovative fundraising model. Stake to bSOL, borrow SOL, stake to bSOL, and issue tokens, ensuring safety for your supporters' investments.</li>
     <li>Step into the future of yield farming with our method that focuses on SOL, offering a streamlined and profitable staking experience.</li>
-    <li>Embrace the new wave of risk-free fundraising. Stake to bSOL, borrow SOL, stake to jitoSOL, and issue tokens, keeping investor funds secure and growing.</li>
-    <li>Take control of your DeFi journey. Stake to bSOL, borrow SOL, stake to jitoSOL, and issue tokens for a direct path to higher returns.</li>
-    <li>One-Click MegaYield: A simple yet powerful tool for DeFi, enabling you to stake to bSOL, borrow SOL, and stake to jitoSOL for optimal returns.</li>
-    <li>Build a sustainable support system for your projects. Stake to bSOL, borrow SOL, stake to jitoSOL, and issue tokens, all while ensuring zero risk to your supporters.</li>
-    <li>Our platform redefines yield farming: Stake to bSOL, borrow SOL, stake to jitoSOL, and issue tokens, making earning on your crypto easy and efficient.</li>
+    <li>Embrace the new wave of risk-free fundraising. Stake to bSOL, borrow SOL, stake to bSOL, and issue tokens, keeping investor funds secure and growing.</li>
+    <li>Take control of your DeFi journey. Stake to bSOL, borrow SOL, stake to bSOL, and issue tokens for a direct path to higher returns.</li>
+    <li>One-Click MegaYield: A simple yet powerful tool for DeFi, enabling you to stake to bSOL, borrow SOL, and stake to bSOL for optimal returns.</li>
+    <li>Build a sustainable support system for your projects. Stake to bSOL, borrow SOL, stake to bSOL, and issue tokens, all while ensuring zero risk to your supporters.</li>
+    <li>Our platform redefines yield farming: Stake to bSOL, borrow SOL, stake to bSOL, and issue tokens, making earning on your crypto easy and efficient.</li>
 </ul>
 </div>
         }
@@ -1478,9 +1517,9 @@ console.log(sigs)
       <WalletMultiButton /> 
       <h3 className="App-header">How to use it:</h3>
       <ul>
-        <li>Yield stakes bsol, deposits bsol to mrgnfi, borrows sol, stakes jitosol.</li>
-        <li>Unyield unstakes jitosol, repays sol, unstakes jitosol.</li>
-        <li>It's a one click megayield button. ATOW bsol yield is 6.471% and jitosol, which you re-stake 76% of, is 6.969%. You will yield 1 * 6.471% + 0.74 * 6.969% = 11.76744% per $ deposited.</li>
+        <li>Yield stakes bsol, deposits bsol to mrgnfi, borrows sol, stakes bsol.</li>
+        <li>Unyield unstakes bsol, repays sol, unstakes bsol.</li>
+        <li>It's a one click megayield button. ATOW bsol yield is 6.471% and bsol, which you re-stake 76% of, is 6.969%. You will yield 1 * 6.471% + 0.74 * 6.969% = 11.76744% per $ deposited.</li>
       </ul>
     </div>
   )}

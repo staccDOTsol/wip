@@ -23,7 +23,7 @@ declare_id!("Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d");
 
 pub const PROGRAM_SEED: &[u8] = b"USDY_USDC_ORACLE";
 
-pub const ORACLE_SEED: &[u8] = b"ORACLE_USDY_SEED";
+pub const ORACLE_SEED: &[u8] = b"ORACLE_USDY_SEED_V2";
 
 #[program]
 pub mod usdy_usd_oracle {

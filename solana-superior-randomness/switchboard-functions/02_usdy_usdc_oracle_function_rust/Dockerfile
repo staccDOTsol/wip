@@ -15,8 +15,8 @@ FROM switchboardlabs/sgx-function AS builder
 WORKDIR /home/root/basic-oracle-example
 COPY ./Cargo.lock ./Cargo.lock
 WORKDIR /home/root/basic-oracle-example/programs/usdy_usdc_oracle
-COPY ./programs/usdy_usdc_oracle/Cargo.toml ./
-COPY ./programs/usdy_usdc_oracle/src/ ./src/
+COPY ./programs /home/root/basic-oracle-example/programs
+
 
 WORKDIR /home/root/basic-oracle-example/switchboard-functions/02_usdy_usdc_oracle_function_rust
 COPY ./switchboard-functions/02_usdy_usdc_oracle_function_rust/Cargo.lock \

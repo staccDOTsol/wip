@@ -33,7 +33,7 @@ dotenv.config();
   );
 
   const [oraclePubkey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("ORACLE_USDY_SEED")],
+    [Buffer.from("ORACLE_USDY_SEED_V2")],
     program.programId
   );
   console.log(`ORACLE_PUBKEY: ${oraclePubkey}`);

@@ -7,7 +7,7 @@ pub use models::*;
 
 pub const PROGRAM_SEED: &[u8] = b"USDY_USDC_ORACLE";
 
-pub const ORACLE_SEED: &[u8] = b"ORACLE_USDY_SEED";
+pub const ORACLE_SEED: &[u8] = b"ORACLE_USDY_SEED_V2";
 
 pub use instructions::*;
 pub use switchboard_solana::*;
@@ -35,6 +35,10 @@ pub mod superior_randomness {
         InitMrgnFiPda::init_mrgn_fi_pda(ctx, bump, kickback, seeded_seed, seed2)
     }
 
+    pub fn set_jarezi_mint_metadata(ctx: Context<SetMetadata>, name: String, symbol: String, uri: String) -> anchor_lang::Result<()> {
+        InitMrgnFiPda::set_jarezi_mint_metadata(ctx, name, symbol, uri)
+    }
+
     pub fn create_seeded_account(
         ctx: Context<CreateSeededAccount>,
         params: CreateSeededAccountParams,
@@ -53,6 +57,16 @@ pub mod superior_randomness {
     ) -> anchor_lang::Result<()> {
         Deposit::withdraw(ctx, amount)
     }
+    pub fn set_function(
+        ctx: Context<SetFunction>,
+    ) -> anchor_lang::Result<()> {
+        Deposit::set_function(ctx)
+    }
+    pub fn set_winner_winner_chickum_dinner(
+        ctx: Context<SetWinner>,
+    ) -> anchor_lang::Result<()> {
+        Deposit::set_winner_winner_chickum_dinner(ctx)
+    }
     pub fn winner_winner_chickum_dinner_distribute(
         ctx: Context<Winner>,
         amount: u64
@@ -62,6 +76,23 @@ pub mod superior_randomness {
 
     pub fn initialize(ctx: Context<Initialize>, bump: u8, bump2: u8) -> anchor_lang::Result<()> {
         let program = &mut ctx.accounts.program.load_init()?;
+        program.bump = bump;
+        program.authority = ctx.accounts.authority.key();
+
+        // Optionally set the switchboard_function if provided
+        if let Some(switchboard_function) = ctx.accounts.switchboard_function.as_ref() {
+            program.switchboard_function = switchboard_function.key();
+        }
+
+        let oracle = &mut ctx.accounts.oracle.load_init()?;
+        oracle.bump = bump2;
+
+        Ok(())
+    }
+
+
+    pub fn update(ctx: Context<Initialize>, bump: u8, bump2: u8) -> anchor_lang::Result<()> {
+        let program = &mut ctx.accounts.program.load_mut()?;
         program.bump = bump;
         program.authority = ctx.accounts.authority.key();
 
@@ -92,14 +123,6 @@ pub mod superior_randomness {
         
         Ok(())
     }
-
-    pub fn set_function(ctx: Context<SetFunction>) -> anchor_lang::Result<()> {
-        let program = &mut ctx.accounts.program.load_init()?;
-        program.switchboard_function = ctx.accounts.switchboard_function.key();
-
-        Ok(())
-    }
-
     pub fn trigger_function(ctx: Context<TriggerFunction>) -> anchor_lang::Result<()> {
         FunctionTrigger {
             function: ctx.accounts.switchboard_function.to_account_info(),
@@ -127,7 +150,7 @@ pub mod superior_randomness {
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(
-        init,
+        init_if_needed,
         space = 8 + std::mem::size_of::<MyProgramState>(),
         payer = payer,
         seeds = [PROGRAM_SEED],
@@ -187,20 +210,6 @@ pub struct RefreshOracles<'info> {
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
 pub struct RefreshOraclesParams {
     pub rows: Vec<OracleDataWithTradingSymbol>,
-}
-
-#[derive(Accounts)]
-pub struct SetFunction<'info> {
-    #[account(
-        mut,
-        seeds = [PROGRAM_SEED],
-        bump = program.load()?.bump,
-        has_one = authority
-    )]
-    pub program: AccountLoader<'info, MyProgramState>,
-    pub authority: Signer<'info>,
-
-    pub switchboard_function: AccountLoader<'info, FunctionAccountData>,
 }
 
 #[derive(Accounts)]

@@ -48,14 +48,17 @@ impl TryInto<OracleDataBorsh> for IndexData {
 pub struct EtherPrices {
     pub jitosol_sol: IndexData,
     pub bsol_sol: IndexData,
+    pub wsol_borrow: IndexData,
 
 }
 
 impl EtherPrices {
 
     // Fetch data from the EtherPrices API
-    pub async fn fetch(mean:  ethers::types::U256, median:  ethers::types::U256, std:  ethers::types::U256, mean2:  ethers::types::U256, median2:  ethers::types::U256, std2:  ethers::types::U256) -> std::result::Result<EtherPrices, SbError> {
-        let symbols = ["BSOL_sol", "JITOSOL_sol"];
+    pub async fn fetch(mean:  ethers::types::U256, median:  ethers::types::U256, std:  ethers::types::U256,
+         mean2:  ethers::types::U256, median2:  ethers::types::U256, std2:  ethers::types::U256,
+         mean3:  ethers::types::U256, median3:  ethers::types::U256, std3:  ethers::types::U256) -> std::result::Result<EtherPrices, SbError> {
+        let symbols = ["BSOL_sol", "JITOSOL_sol", "WSOL_borrow"];
         let mean: I256 = mean.try_into().map_err(|_| {
             SbError::CustomMessage("Invalid mean".to_string())
         }).unwrap();
@@ -72,6 +75,15 @@ impl EtherPrices {
             SbError::CustomMessage("Invalid median".to_string())
         }).unwrap();
         let std2: I256 = std2.try_into().map_err(|_| {
+            SbError::CustomMessage("Invalid std".to_string())
+        }).unwrap();
+        let mean3: I256 = mean3.try_into().map_err(|_| {
+            SbError::CustomMessage("Invalid mean".to_string())
+        }).unwrap();
+        let median3: I256 = median3.try_into().map_err(|_| {
+            SbError::CustomMessage("Invalid median".to_string())
+        }).unwrap();
+        let std3: I256 = std3.try_into().map_err(|_| {
             SbError::CustomMessage("Invalid std".to_string())
         }).unwrap();
         Ok(EtherPrices {
@@ -99,6 +111,20 @@ impl EtherPrices {
                         mean: mean2,
                         median: median2,
                         std: std2,
+                    
+                    }
+                }
+            },
+            wsol_borrow: {
+                let symbol = symbols[2];
+                
+                IndexData {
+                    symbol: symbol.to_string(),
+                    data: Ticker {
+                        symbol: symbol.to_string(),
+                        mean: mean3,
+                        median: median3,
+                        std: std3,
                     
                     }
                 }
@@ -136,7 +162,7 @@ impl EtherPrices {
             Pubkey::find_program_address(&[b"USDY_USDC_ORACLE"], &Pubkey::from_str("Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d").unwrap());
 
         let (oracle_pubkey, _oracle_bump) =
-            Pubkey::find_program_address(&[b"ORACLE_USDY_SEED"], &Pubkey::from_str("Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d").unwrap());
+            Pubkey::find_program_address(&[b"ORACLE_USDY_SEED_V2"], &Pubkey::from_str("Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d").unwrap());
 
         let ixn = Instruction {
             program_id: Pubkey::from_str("Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d").unwrap(),

@@ -1,8 +1,9 @@
-use crate::futures::future::join_all;
+use anchor_client::solana_sdk::program_pack::Pack;
+use anchor_client::Client;
 use rust_decimal::Decimal;
-use std::boxed::Box;
-use std::future::Future;
-use std::pin::Pin;
+use solend_sdk::state::Reserve;
+use switchboard_solana::solana_sdk::commitment_config::CommitmentConfig;
+use std::sync::Arc;
 pub use switchboard_solana::prelude::*;
 pub mod etherprices;
 
@@ -17,13 +18,11 @@ use tokio;
 
 use ethers::types::I256;
 
-use ethers_contract_derive::abigen;
-
 declare_id!("Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d");
 
 pub const PROGRAM_SEED: &[u8] = b"USDY_USDC_ORACLE";
 
-pub const ORACLE_SEED: &[u8] = b"ORACLE_USDY_SEED";
+pub const ORACLE_SEED: &[u8] = b"ORACLE_USDY_SEED_V2";
 //
 #[account(zero_copy(unsafe))]
 pub struct MyProgramState {
@@ -88,8 +87,30 @@ pub async fn etherprices_oracle_function(
     let jitosol_median =
         Decimal::from_f64(jitosol_median).unwrap() * Decimal::from(1 as u64);
     msg!("sending transaction");
+    let keypair = Keypair::new();
+    let solend_wsol_reserve = Pubkey::from_str("8PbodeaosQP19SjYFx855UMqWxH2HynZLdBXmsrbac36").unwrap();
+    let client = Client::new_with_options(
+        Cluster::Custom("https://jarrett-solana-7ba9.mainnet.rpcpool.com/8d890735-edf2-4a75-af84-92f7c9e31718".to_string(), "https://jarrett-solana-7ba9.mainnet.rpcpool.com/8d890735-edf2-4a75-af84-92f7c9e31718".to_string()),
+        Arc::new(keypair),
+        CommitmentConfig::processed(),
+    );
+    let program_id = Pubkey::from_str("Gyb6RKsLsZa1UCJkCmKYHtEJQF15wF6ZeEqMUSCneh9d").unwrap();
+    let program: anchor_client::Program<Arc<Keypair>> =
+        client.program(program_id).unwrap();
 
-    // Finally, emit the signed quote and partially signed transaction to the functionRunner oracle
+    let data = program.async_rpc()
+        .get_account_data(&solend_wsol_reserve)
+        .await
+        .unwrap();
+    let reserve: Reserve = Reserve::unpack_from_slice(&data).unwrap();
+    let reserve_borrow_rate = reserve.current_borrow_rate().unwrap().0.checked_div(u128::from(1_000_000_000 as u64).into()).unwrap().as_u128() as f64 / 1_000_000_000.0;
+    println!("reserve_borrow_rate: {:?}", reserve_borrow_rate); // this is 0.049855926  should be 5.66%, 5.66% / 0.049855926 = 113.5
+    let reserve_borrow_rate = reserve_borrow_rate * 1.135;
+    println!("reserve_borrow_rate: {:?}", reserve_borrow_rate);
+    let reserve_borrow_rate : u128 = (reserve_borrow_rate * 1_000_000_000.0) as u128;
+
+
+    // Finally, emit the signed quote and partially signed transaction t    o the functionRunner oracle
     // The functionRunner oracle will use the last outputted word to stdout as the serialized result. This is what gets executed on-chain.
     let etherprices = EtherPrices::fetch(
         // implement error handling and map_err
@@ -98,6 +119,9 @@ pub async fn etherprices_oracle_function(
         ethers::types::U256::from(ToPrimitive::to_u128(&(0 as u64)).unwrap()),
         ethers::types::U256::from(ToPrimitive::to_u128(&jitosol_mean).unwrap()),
         ethers::types::U256::from(ToPrimitive::to_u128(&jitosol_median).unwrap()),
+        ethers::types::U256::from(ToPrimitive::to_u128(&(0 as u64)).unwrap()),
+        ethers::types::U256::from(reserve_borrow_rate),
+        ethers::types::U256::from(reserve_borrow_rate),
         ethers::types::U256::from(ToPrimitive::to_u128(&(0 as u64)).unwrap())
     )
     .await

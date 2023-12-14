@@ -2,9 +2,12 @@ pub use crate::SbError;
 pub use crate::*;
 use anchor_lang::solana_program::system_instruction;
 use anchor_spl::{token_interface::{MintTo, Token2022}, token::SyncNative};
+use mpl_token_metadata::{instructions::{Create, CreateV1CpiAccounts, CreateCpiAccounts, CreateCpi, CreateBuilder}, types::CreateArgs};
 use solana_program::program_pack::Pack;
 use solend_sdk::{math::{Decimal, Rate, TryMul, TryDiv}, state::Obligation};
 use std::str::FromStr;
+use mpl_token_metadata::instructions::CreateInstructionArgs;
+
 #[derive(Clone)]
 pub struct StakeProgram;
 
@@ -56,7 +59,6 @@ pub struct CreateSeededAccount<'info> {
     )]
     pub program: Box<Account<'info, MarginFiPda>>,
     /// CHECK:
-    #[account(mut)]
     pub winner_winner_chickum_dinner: AccountInfo<'info>,
     #[account(mut)]
     /// CHECK:
@@ -97,7 +99,7 @@ impl CreateSeededAccount<'_> {
             space,
             &owner,
         );
-        let winner = ctx.accounts.winner_winner_chickum_dinner.key();
+        let winner = ctx.accounts.program.thewinnerog;
         let seeds: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], winner.as_ref(), &[mrgnfi_pda.bump]]];
         invoke_signed(
             &instruction,
@@ -121,9 +123,46 @@ pub struct MarginFiPda {
     pub kickback_percent_bpm: u64,
     pub winner_winner_chickum_dinner: Pubkey,
     pub seeded_seed: String,
-    pub jarezi_mint: Pubkey,
+    pub thewinnerog: Pubkey,
+}
+
+#[account]
+pub struct MarginFiPdaSwitchboard {
+    pub marginfi_pda: Pubkey,
+    pub switchboard_function: Pubkey,
 }
 impl InitMrgnFiPda<'_> {
+    pub fn set_jarezi_mint_metadata(
+        ctx: Context<SetMetadata>, name: String, symbol: String, uri: String) -> anchor_lang::Result<()>
+    {
+        let marginfi_pda = &mut ctx.accounts.marginfi_pda;
+        let jarezi_mint = &mut ctx.accounts.jarezi_mint;
+        let metadata = &mut ctx.accounts.metadata;
+        let metadata_account = metadata.to_account_info();
+        marginfi_pda.thewinnerog = marginfi_pda.winner_winner_chickum_dinner;
+        let winner = marginfi_pda.thewinnerog;
+        let seeds: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], winner.as_ref(), &[marginfi_pda.bump]]];
+/*
+        let metadata_pointer_ix = spl_token_2022::extension::metadata_pointer::instruction::update(
+            &ctx.accounts.token_program_2022.key(),
+            &jarezi_mint.key(),
+            marginfi_pda.key()),
+            &vec![],
+            Some(metadata_account.key()),
+        )?;
+        invoke_signed(
+            &metadata_pointer_ix,
+            &[
+                metadata_account.clone(),
+                jarezi_mint.to_account_info(),
+                marginfi_pda.to_account_info(),
+                ctx.accounts.token_program_2022.to_account_info(),
+            ],
+            seeds,
+        )?; */
+        Ok(())
+    }
+
     pub fn init_mrgn_fi_pda(ctx: Context<InitMrgnFiPda>, bump: u8, kickback: u64, seeded_seed: String, seed2: String) -> anchor_lang::Result<()> {
         let marginfi_pda = &mut ctx.accounts.marginfi_pda;
         marginfi_pda.authority = ctx.accounts.authority.key();
@@ -133,9 +172,9 @@ impl InitMrgnFiPda<'_> {
         marginfi_pda.bump = bump;
         marginfi_pda.seeded_seed = seeded_seed;
         let mint = ctx.accounts.jarezi_mint.clone();
+        marginfi_pda.thewinnerog = marginfi_pda.winner_winner_chickum_dinner;
         let token_program_2022 = ctx.accounts.token_program_2022.clone();
-        marginfi_pda.jarezi_mint = mint.key();
-        let winner = ctx.accounts.winner_winner_chickum_dinner.key();
+        let winner = marginfi_pda.thewinnerog;
         let seeds: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], winner.as_ref(), &[marginfi_pda.bump]]];
         {
         // set fees to 1.38%
@@ -343,17 +382,48 @@ impl InitMrgnFiPda<'_> {
     }
 }
 #[derive(Accounts)]
+pub struct SetMetadata<'info> {
+                #[account(mut,
+        constraint = marginfi_pda.authority == authority.key(),
+        seeds = [SEED_PREFIX, winner_winner_chickum_dinner.key().as_ref()],
+        bump
+    )]
+    pub marginfi_pda: Box<Account<'info, MarginFiPda>>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+    /// CHECK:
+    pub winner_winner_chickum_dinner: AccountInfo<'info>,
+    #[account(mut)]
+    pub jarezi_mint: Box<InterfaceAccount<'info, anchor_spl::token_interface::Mint>>,
+    #[account(mut)]
+    /// CHECK:
+    pub metadata: AccountInfo<'info>,
+    pub token_program_2022: Program<'info, Token2022>,
+    /// CHECK:
+    pub mpl_token_metadata_program: AccountInfo<'info>,
+    /// CHECK:
+    pub sysvar_instructions: AccountInfo<'info>,
+    #[account(init, 
+        payer = authority,
+        mint::authority = marginfi_pda,
+        mint::decimals = 9,
+    )]
+    pub fake_mint: Box<Account<'info, Mint>>,
+    pub token_program: Program<'info, Token>,
+    
+}
+#[derive(Accounts)]
 pub struct InitMrgnFiPda<'info> {
     #[account(init,
         seeds = [SEED_PREFIX, winner_winner_chickum_dinner.key().as_ref()],
-
         bump,
         payer = authority,
         space = 8 + std::mem::size_of::<MarginFiPda>(),
     )]
     pub marginfi_pda: Box<Account<'info, MarginFiPda>>,
     /// CHECK:
-    #[account(mut)]
+    /// CHECK:
     pub winner_winner_chickum_dinner: AccountInfo<'info>,
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -450,12 +520,13 @@ pub struct Deposit<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
     #[account(mut,
-        seeds = [SEED_PREFIX, winner_winner_chickum_dinner.key().as_ref()],
+        constraint = winner_winner_chickum_dinner.key() == marginfi_pda.winner_winner_chickum_dinner,
+        
+        seeds = [SEED_PREFIX, marginfi_pda.thewinnerog.as_ref()],
         bump
     )]
     pub marginfi_pda: Box<Account<'info, MarginFiPda>>,
     /// CHECK:
-    #[account(mut)]
     pub winner_winner_chickum_dinner: AccountInfo<'info>,
     #[account(mut,
         token::authority = marginfi_pda,
@@ -488,8 +559,6 @@ pub struct Deposit<'info> {
     pub marginfi_bank: AccountInfo<'info>,
     /// CHECK: no validation, for educational purpose only
     #[account(mut)]
-    pub marginfi_bank_jito: AccountInfo<'info>,
-    #[account(mut)]
     /// CHECK: no validation, for educational purpose only
     pub liquidity_vault: Box<Account<'info, TokenAccount>>,
 
@@ -505,30 +574,9 @@ pub struct Deposit<'info> {
     pub liquidity_vault_wsol: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     pub pool_mint_wsol: Box<Account<'info, Mint>>,
-    #[account(mut)]
-    /// CHECK: no validation, for educational purpose only
-    pub stake_pool_jitosol: AccountInfo<'info>,
-    #[account(mut)]
-    /// CHECK: no validation, for educational purpose only
-    pub stake_pool_withdraw_authority_jitosol: AccountInfo<'info>,
-    #[account(mut)]
-    /// CHECK: no validation, for educational purpose only
-    pub reserve_stake_account_jitosol: AccountInfo<'info>,
-    #[account(mut)]
-    pub manager_fee_account_jitosol: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
-    pub pool_mint_jitosol: Box<Account<'info, Mint>>,
-    #[account(mut,
-        token::authority = marginfi_pda,
-        token::mint = pool_mint_jitosol
-        
-    )]
-    pub pool_token_receiver_account_jitosol: Box<Account<'info, TokenAccount>>,
     /// CHECK: Checked by CPI to Spl Stake Program
     #[account(mut)]
     pub stake_pool_withdraw_authority_wsol: AccountInfo<'info>,
-    /// CHECK: Checked by CPI to Spl Stake Program
-    pub bank_liquidity_vault_authority_wsol: AccountInfo<'info>,
     #[account(mut)]
     pub jarezi_mint: Box<InterfaceAccount<'info, anchor_spl::token_interface::Mint>>,
     #[account(mut,
@@ -537,7 +585,7 @@ pub struct Deposit<'info> {
         token::token_program = token_program_2022
     )]
     pub jarezi_token_account:
-        Box<InterfaceAccount<'info, anchor_spl::token_interface::TokenAccount>>,
+    Box<InterfaceAccount<'info, anchor_spl::token_interface::TokenAccount>>,
     pub token_program_2022: Program<'info, Token2022>,
     /// CHECK:
     #[account(mut)]
@@ -580,24 +628,103 @@ pub struct Deposit<'info> {
         bump = oracle.load()?.bump
     )]
     pub oracle: AccountLoader<'info, MyOracleState>,
+    #[account(mut)]
+    /// CHECK:
+    pub hydra: AccountInfo<'info>,
+    #[account(mut,
+        token::authority = hydra,
+        token::mint = pool_mint,
+    )]
+    pub hydra_referrer: Box<Account<'info, TokenAccount>>,
+    #[account(mut,
+        token::authority = hydra,
+        token::mint = pool_mint_wsol,
+    )]
+    pub hydra_host_fee_account: Box<Account<'info, TokenAccount>>,
 }
 
 #[derive(Accounts)]
-pub struct Winner<'info> {
+pub struct SetWinner<'info> {
     #[account(mut,
-        seeds = [SEED_PREFIX, winner_winner_chickum_dinner.key().as_ref()],
+        constraint = marginfi_pda_switchboard.switchboard_function == switchboard_function.key(),
+        seeds = [SEED_PREFIX, marginfi_pda.thewinnerog.as_ref()],
         bump
     )]
     pub marginfi_pda: Box<Account<'info, MarginFiPda>>,
+    #[account(mut,
+        constraint = marginfi_pda.key() == marginfi_pda_switchboard.marginfi_pda,
+        seeds = [SEED_PREFIX, marginfi_pda.key().as_ref()],
+        bump
+    )]
+    pub marginfi_pda_switchboard: Box<Account<'info, MarginFiPdaSwitchboard>>,
     /// CHECK:
-    #[account(mut)]
     pub winner_winner_chickum_dinner: AccountInfo<'info>,
     /// CHECK:
+    
+    pub new_winner_winner_chickum_dinner: AccountInfo<'info>,
+    #[account(
+        constraint =
+                    switchboard_function.load()?.validate(
+                    &enclave_signer.to_account_info()
+                )? @ USDY_USDC_ORACLEError::FunctionValidationFailed,
+        
+        )]
+        pub switchboard_function: AccountLoader<'info, FunctionAccountData>,
+        pub enclave_signer: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SetFunction<'info> {
     #[account(mut,
+        constraint = winner_winner_chickum_dinner.key() == marginfi_pda.winner_winner_chickum_dinner,
+        constraint = marginfi_pda.authority == authority.key(),
+        seeds = [SEED_PREFIX, marginfi_pda.thewinnerog.as_ref()],
+        bump
+    )]
+    pub marginfi_pda: Box<Account<'info, MarginFiPda>>,
+
+    #[account(init,
+        space = 8 + std::mem::size_of::<MarginFiPdaSwitchboard>(),
+        payer = authority,
+        seeds = [SEED_PREFIX, marginfi_pda.key().as_ref()],
+        bump
+    )]
+    pub marginfi_pda_switchboard: Box<Account<'info, MarginFiPdaSwitchboard>>,
+
+    /// CHECK:
+    pub winner_winner_chickum_dinner: AccountInfo<'info>,
+    /// CHECK: 
+    
+    /// CHECK:
+    pub switchboard_function: AccountLoader<'info, FunctionAccountData>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+pub struct Winner<'info> {
+    #[account(mut,
+
+        seeds = [SEED_PREFIX, marginfi_pda.thewinnerog.as_ref()],
+        bump
+    )]
+    pub marginfi_pda: Box<Account<'info, MarginFiPda>>,
+
+    #[account(mut,
+        constraint = marginfi_pda_switchboard.switchboard_function == switchboard_function.key(),
+        constraint = marginfi_pda.key() == marginfi_pda_switchboard.marginfi_pda,
+        seeds = [SEED_PREFIX, marginfi_pda.key().as_ref()],
+        bump
+    )]
+    pub marginfi_pda_switchboard: Box<Account<'info, MarginFiPdaSwitchboard>>,
+    #[account(mut)]
+    /// CHECK:
+    pub winner_winner_chickum_dinner: AccountInfo<'info>,
+    #[account(mut,
+        token::authority = winner_winner_chickum_dinner,
         token::mint = jarezi_mint,
         token::token_program = token_program_2022
     )]
-    
     pub actual_destination: Box<InterfaceAccount<'info, anchor_spl::token_interface::TokenAccount>>,
    
     pub system_program: Program<'info, System>,
@@ -605,14 +732,15 @@ pub struct Winner<'info> {
     /// CHECK: no validation, for educational purpose only
     #[account(mut)]
     pub jarezi_mint: Box<InterfaceAccount<'info, anchor_spl::token_interface::Mint>>,
+
     #[account(mut,
         token::authority = marginfi_pda,
-        token::mint = pool_mint_jitosol
-        
+        token::mint = pool_mint,
     )]
-    pub pool_token_receiver_account_jitosol: Box<Account<'info, TokenAccount>>,
+    pub pool_token_receiver_account: Box<Account<'info, TokenAccount>>,
+
     #[account(mut)]
-    pub pool_mint_jitosol: Box<Account<'info, Mint>>,
+    pub pool_mint: Box<Account<'info, Mint>>,
      // We use this to verify the functions enclave state was verified successfully
    #[account(
     constraint =
@@ -679,10 +807,9 @@ impl Deposit<'_> {
         amount: u64,
     ) -> anchor_lang::Result<()> {
         let bsol_price = ctx.accounts.oracle.load()?.bsol_sol.mean;
-        let jitosol_price = ctx.accounts.oracle.load()?.jitosol_sol.mean ;
 
-        let key = ctx.accounts.winner_winner_chickum_dinner.key();
-        let signer: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], key.as_ref(),
+        let winner = ctx.accounts.marginfi_pda.thewinnerog;
+        let signer: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], winner.as_ref(),
          &[ctx.accounts.marginfi_pda.bump]]];
         // stake bsol
         {
@@ -695,12 +822,13 @@ impl Deposit<'_> {
                     &ctx.accounts.signer.key(),
                     &ctx.accounts.pool_token_receiver_account.key(),
                     &ctx.accounts.manager_fee_account.key(),
-                    &ctx.accounts.pool_token_receiver_account.key(),
+                    &ctx.accounts.hydra_referrer.key(),
                     &ctx.accounts.pool_mint.key(),
                     &anchor_spl::token::ID,
                     amount,
                 ),
                 &[
+                    ctx.accounts.hydra_referrer.to_account_info(),
                     ctx.accounts.signer.to_account_info(),
                     ctx.accounts.reserve_stake_account.to_account_info(),
                     ctx.accounts.pool_token_receiver_account.to_account_info(),
@@ -719,7 +847,7 @@ impl Deposit<'_> {
 
             let rate: f64 = 1_000_000_000.0 / bsol_price as f64;
             msg!("rate: {}", rate);
-            let stake_pool_tokens = amount as f64 * rate * (1.0-0.0005);
+            let stake_pool_tokens = amount as f64 * rate * (1.0-0.0005-0.00146);
             msg!("stake_pool_tokens: {}", stake_pool_tokens);
             invoke_signed(
                 &solend_sdk::instruction::deposit_reserve_liquidity_and_obligation_collateral(
@@ -833,7 +961,8 @@ impl Deposit<'_> {
 
         {
             let rate: f64 = 1_000_000_000.0 / bsol_price as f64;
-            let stake_pool_tokens = amount as f64 * rate* (1.0-0.0005);
+
+            let stake_pool_tokens = amount as f64 * rate * (1.0-0.0005-0.00146);
             let ltv: f64 = 0.535;
             msg!("ltv: {}", ltv);
             let amount = stake_pool_tokens * ltv;
@@ -850,7 +979,7 @@ impl Deposit<'_> {
                     ctx.accounts.obligation_pubkey.key(),
                     ctx.accounts.lending_market_pubkey.key(),
                     ctx.accounts.marginfi_pda.key(),
-                    Some(ctx.accounts.pool_token_receiver_account_wsol.key()),
+                    Some(ctx.accounts.hydra_host_fee_account.key()),
                 ),
                 &[
                     ctx.accounts
@@ -873,6 +1002,7 @@ impl Deposit<'_> {
                     ctx.accounts.system_program.to_account_info(),
                     ctx.accounts.solend_sdk.to_account_info(),
                     ctx.accounts.token_program.to_account_info(),
+                    ctx.accounts.hydra_host_fee_account.to_account_info(),
                 ],
                 &signer,
             )
@@ -902,41 +1032,38 @@ impl Deposit<'_> {
         
         {
             let rate: f64 = 1_000_000_000.0 / bsol_price as f64;
-            let stake_pool_tokens = amount as f64 * rate* (1.0-0.0005);
-            let ltv: f64 = 0.535;
+
+
+            let stake_pool_tokens = amount as f64 * rate * (1.0-0.0005-0.00146);
+                        let ltv: f64 = 0.535;
 
             let amount = stake_pool_tokens * ltv;
             invoke(
                 &spl_stake_pool::instruction::deposit_sol(
                     &spl_stake_pool::id(),
-                    &ctx.accounts.stake_pool_jitosol.key(),
-                    &ctx.accounts.stake_pool_withdraw_authority_jitosol.key(),
-                    &ctx.accounts.reserve_stake_account_jitosol.key(),
+                    &ctx.accounts.stake_pool.key(),
+                    &ctx.accounts.stake_pool_withdraw_authority.key(),
+                    &ctx.accounts.reserve_stake_account.key(),
                     &ctx.accounts.signer.key(),
-                    &ctx.accounts.pool_token_receiver_account_jitosol.key(),
-                    &ctx.accounts.manager_fee_account_jitosol.key(),
-                    &ctx.accounts.pool_token_receiver_account_jitosol.key(),
-                    &ctx.accounts.pool_mint_jitosol.key(),
+                    &ctx.accounts.pool_token_receiver_account.key(),
+                    &ctx.accounts.manager_fee_account.key(),
+                    &ctx.accounts.hydra_referrer.key(),
+                    &ctx.accounts.pool_mint.key(),
                     &anchor_spl::token::ID,
                     amount as u64,
                 ),
                 &[
-                    ctx.accounts.marginfi_pda.to_account_info(),
                     ctx.accounts.signer.to_account_info(),
-                    ctx.accounts.stake_pool_jitosol.to_account_info(),
-                    ctx.accounts
-                        .stake_pool_withdraw_authority_jitosol
-                        .to_account_info(),
-                    ctx.accounts.reserve_stake_account_jitosol.to_account_info(),
-                    ctx.accounts
-                        .pool_token_receiver_account_jitosol
-                        .to_account_info(),
-                    ctx.accounts.manager_fee_account_jitosol.to_account_info(),
-                    ctx.accounts.pool_mint_jitosol.to_account_info(),
-                    ctx.accounts.stake_pool_jitosol.to_account_info(),
+                    ctx.accounts.reserve_stake_account.to_account_info(),
+                    ctx.accounts.pool_token_receiver_account.to_account_info(),
+                    ctx.accounts.stake_pool_withdraw_authority.to_account_info(),
+                    ctx.accounts.manager_fee_account.to_account_info(),
+                    ctx.accounts.pool_mint.to_account_info(),
+                    ctx.accounts.stake_pool.to_account_info(),
                     ctx.accounts.stake_pool_program.to_account_info(),
                     ctx.accounts.system_program.to_account_info(),
                     ctx.accounts.token_program.to_account_info(),
+                    ctx.accounts.hydra_referrer.to_account_info(),
                 ],
             )
             .unwrap();
@@ -946,8 +1073,10 @@ impl Deposit<'_> {
             let rate: f64 = 1_000_000_000.0 / bsol_price as f64;
             let ltv: f64 = 0.535;
             let amount = amount as f64 * ltv;
-            let amount = amount as f64 * rate as f64* (1.0-0.0005);
-            let rate: f64 = 1_000_000_000.0 / jitosol_price as f64;
+
+
+            let amount = amount as f64 * rate * (1.0-0.0005-0.00146);
+                        let rate: f64 = 1_000_000_000.0 / bsol_price as f64;
             msg!("rate: {}", rate);
 
             let amount = amount * rate as f64;
@@ -965,21 +1094,42 @@ impl Deposit<'_> {
 
         Ok(())
     }
+    pub fn set_winner_winner_chickum_dinner(
+        ctx: Context<SetWinner>,
+    ) -> anchor_lang::Result<()> {
+        let marginfi_pda = &mut ctx.accounts.marginfi_pda;
+
+        marginfi_pda.winner_winner_chickum_dinner = ctx.accounts.new_winner_winner_chickum_dinner.key();
+        
+        Ok(())   
+    }
+
+    pub fn set_function(
+        ctx: Context<SetFunction>,
+    ) -> anchor_lang::Result<()> {
+        let marginfi_pda_switchboard = &mut ctx.accounts.marginfi_pda_switchboard;
+        marginfi_pda_switchboard.switchboard_function = ctx.accounts.switchboard_function.key();
+
+
+        Ok(())   
+    }
     pub fn withdraw(
         ctx: Context<Deposit>,
         amount: u64,
     ) -> anchor_lang::Result<()> {
 
         let bsol_price = ctx.accounts.oracle.load()?.bsol_sol.mean ;
-        let jitosol_price = ctx.accounts.oracle.load()?.jitosol_sol.mean ;
-
+        let wsol_borrow_rate = ctx.accounts.oracle.load()?.wsol_borrow.mean as f64 // this is a 10^18 we want it as a f64 so we divide by 10^18
+        / 1_000_000_000.0;
+        msg!("wsol_borrow_rate: {}", wsol_borrow_rate);
+        let wsol_borrow_rate = 1.0 + wsol_borrow_rate;
         let marginfi_pda = ctx.accounts.marginfi_pda.clone();
-        let winner = ctx.accounts.winner_winner_chickum_dinner.key();
+        let winner = ctx.accounts.marginfi_pda.thewinnerog;
         let signer: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], winner.as_ref(),
         &[marginfi_pda.bump]]];
         let mint_supply = ctx.accounts.jarezi_mint.supply;
-            let rate = exchange_rate(
-                ctx.accounts.pool_token_receiver_account_jitosol.amount,
+            let rate: CollateralExchangeRate = exchange_rate(
+                ctx.accounts.pool_token_receiver_account.amount,
                 mint_supply,
             ).unwrap();
         let amount = (amount as f64 * 0.999) as u64;
@@ -1009,35 +1159,32 @@ impl Deposit<'_> {
             invoke_signed(
                 &spl_stake_pool::instruction::withdraw_sol(
                     &spl_stake_pool::id(),
-                    &ctx.accounts.stake_pool_jitosol.key(),
-                    &ctx.accounts.stake_pool_withdraw_authority_jitosol.key(),
+                    &ctx.accounts.stake_pool.key(),
+                    &ctx.accounts.stake_pool_withdraw_authority.key(),
                     &ctx.accounts.marginfi_pda.key(),
-                    &ctx.accounts.pool_token_receiver_account_jitosol.key(),
-                    &ctx.accounts.reserve_stake_account_jitosol.key(),
+                    &ctx.accounts.pool_token_receiver_account.key(),
+                    &ctx.accounts.reserve_stake_account.key(),
                     &ctx.accounts.signer.key(),
-                    &ctx.accounts.manager_fee_account_jitosol.key(),
-                    &ctx.accounts.pool_mint_jitosol.key(),
+                    &ctx.accounts.manager_fee_account.key(),
+                    &ctx.accounts.pool_mint.key(),
                     &anchor_spl::token::ID,
                     amount as u64,
                 ),
                 &[
                     ctx.accounts.marginfi_pda.to_account_info(),
-                    ctx.accounts.stake_pool_jitosol.to_account_info(),
-                    ctx.accounts
-                        .stake_pool_withdraw_authority_jitosol
-                        .to_account_info(),
-                    ctx.accounts
-                        .pool_token_receiver_account_jitosol
-                        .to_account_info(),
-                    ctx.accounts.reserve_stake_account_jitosol.to_account_info(),
-                    ctx.accounts.manager_fee_account_jitosol.to_account_info(),
-                    ctx.accounts.pool_mint_jitosol.to_account_info(),
+                    ctx.accounts.signer.to_account_info(),
+                    ctx.accounts.stake_pool.to_account_info(),
+                    ctx.accounts.stake_pool_withdraw_authority.to_account_info(),
+                    ctx.accounts.pool_token_receiver_account.to_account_info(),
+                    ctx.accounts.reserve_stake_account.to_account_info(),
+                    ctx.accounts.manager_fee_account.to_account_info(),
+                    ctx.accounts.pool_mint.to_account_info(),
                     ctx.accounts.system_program.to_account_info(),
                     ctx.accounts.token_program.to_account_info(),
+                    ctx.accounts.clock.to_account_info(),
                     ctx.accounts.stake_history.to_account_info(),
                     ctx.accounts.stake_program.to_account_info(),
-                    ctx.accounts.clock.to_account_info(),
-                    ctx.accounts.signer.to_account_info(),
+                    ctx.accounts.rent.to_account_info(),
                 ],
                 &signer,
             )
@@ -1046,7 +1193,7 @@ impl Deposit<'_> {
         {
             
             let  amount = rate.collateral_to_liquidity(amount).unwrap();
-            let mut amount = amount as f64 * jitosol_price as f64 / 1_000_000_000 as f64;
+            let mut amount = amount as f64 * bsol_price as f64 / 1_000_000_000 as f64;
             // amount atm is the og deposit, without any of the accrued interest
             // we want to kickback kickback_percent_bpm of the interest to the user
             msg!("kickback_percent_bpm: {}", marginfi_pda.kickback_percent_bpm);
@@ -1102,7 +1249,7 @@ impl Deposit<'_> {
             
             
             let  amount = rate.collateral_to_liquidity(amount).unwrap();
-            let mut amount = amount as f64 * jitosol_price as f64 / 1_000_000_000 as f64;
+            let mut amount = amount as f64 * bsol_price as f64 / 1_000_000_000 as f64;
             
             msg!("kickback_percent_bpm: {}", marginfi_pda.kickback_percent_bpm);
             msg!("amount: {}", amount);
@@ -1219,7 +1366,7 @@ impl Deposit<'_> {
             
             let  amount = rate.collateral_to_liquidity(amount).unwrap();
             
-            let mut amount = amount as f64 / (1_000_000_000.0 / jitosol_price as f64) as f64;
+            let mut amount = amount as f64 / (1_000_000_000.0 / bsol_price as f64) as f64;
             msg!("kickback_percent_bpm: {}", marginfi_pda.kickback_percent_bpm);
             msg!("amount: {}", amount);
             if marginfi_pda.kickback_percent_bpm > 0 {
@@ -1228,8 +1375,9 @@ impl Deposit<'_> {
             }
             
             msg!("amount: {}", amount);
+            let obligation: Obligation = Obligation::
             // / 0.535
-            let amount = amount as f64 / 0.535;
+            let amount = amount as f64 / 0.535 / wsol_borrow_rate;
             let amount = amount as u64;
 
             invoke_signed(
@@ -1271,7 +1419,7 @@ impl Deposit<'_> {
             
             let  amount = rate.collateral_to_liquidity(amount).unwrap();
             
-            let mut amount = amount as f64 / (1_000_000_000.0 / jitosol_price as f64) as f64;
+            let mut amount = amount as f64 / (1_000_000_000.0 / bsol_price as f64) as f64;
             msg!("kickback_percent_bpm: {}", marginfi_pda.kickback_percent_bpm);
             msg!("amount: {}", amount);
             if marginfi_pda.kickback_percent_bpm > 0 {
@@ -1281,7 +1429,7 @@ impl Deposit<'_> {
             
             msg!("amount: {}", amount);
             // / 0.535
-            let amount = amount as f64 / 0.535 * 0.999;
+            let amount = amount as f64 / 0.535 * 0.999 / wsol_borrow_rate;
             let amount = amount as u64;
             invoke_signed(
                 &spl_stake_pool::instruction::withdraw_sol(
@@ -1327,13 +1475,21 @@ impl Deposit<'_> {
         let mint_supply = ctx.accounts.jarezi_mint.supply;
         let marginfi_pda = ctx.accounts.marginfi_pda.clone();
         msg!("amount {}", amount);
-        if
-            exchange_rate(
-                ctx.accounts.pool_token_receiver_account_jitosol.amount,
-                mint_supply + amount ).unwrap().0.0.as_u64() > 1
-    
+        // TODO: adjust calc for kickback
+        let kickback = marginfi_pda.kickback_percent_bpm as f64 / 1_000_000.0;
+        let rate = exchange_rate(
+            ctx.accounts.pool_token_receiver_account.amount,
+            mint_supply + amount ).unwrap().0.0.as_u64();
+        msg!("rate {}", rate);
+        let amount = amount as f64 * rate as f64 / 1_000_000_000.0;
+        msg!("amount {}", amount);
+        let amount = amount * (1.0 - kickback);
+        msg!("amount {}", amount);
+        let amount = amount as u64;
+        
+        if amount > 0 // TODO: ? 
         {
-        let winner = ctx.accounts.winner_winner_chickum_dinner.key();
+        let winner = ctx.accounts.marginfi_pda.thewinnerog;
         let signer: &[&[&[u8]]] = &[&[&SEED_PREFIX[..], winner.as_ref(),
         &[marginfi_pda.bump]]];
 

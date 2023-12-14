@@ -63,8 +63,8 @@ pub struct MyOracleState {
     pub bump: u8,
     pub bsol_sol: OracleData,
     pub jitosol_sol: OracleData,
-    // can always re-allocate to add more
-    // pub reserved: [u8; 2400],
+    pub wsol_borrow: OracleData,
+    pub _padding: [u8; 192],//32*6=192
 }
 
 impl MyOracleState {
